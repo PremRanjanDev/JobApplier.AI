@@ -1,7 +1,5 @@
 import asyncio
 from playwright.async_api import async_playwright
-import os
-import pathlib
 from login import login
 from easy_apply import easy_apply
 

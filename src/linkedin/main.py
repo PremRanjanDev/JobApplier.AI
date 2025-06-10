@@ -14,7 +14,7 @@ async def main():
 
         # Perform the easy apply process
         print("Starting the Easy Apply process...")
-        await easy_apply(page, "Java developer", "Sinapore")
+        await easy_apply(page, "Java developer", "Singapore")
   
         print("Easy apply finished. Keeping browser open (10 sec) for inspection.")
         await page.wait_for_timeout(10000)  # Keep open for 10 seconds as an example

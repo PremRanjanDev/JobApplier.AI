@@ -7,8 +7,11 @@ LINKEDIN_STATE_FILE = "user_data/linkedin_state.json"
 
 async def _login_with_saved_state(p):
     print("Login in using saved LinkedIn state...")
-    browser = await p.chromium.launch(headless=False)
-    context = await browser.new_context(storage_state=LINKEDIN_STATE_FILE)
+    browser = await p.chromium.launch(
+        headless=False,
+        args=["--start-maximized"]
+    )
+    context = await browser.new_context(storage_state=LINKEDIN_STATE_FILE, viewport=None)
     page = await context.new_page()
     print("Navigating to LinkedIn feed using saved state...")
     await page.goto("https://www.linkedin.com/feed/")
@@ -16,8 +19,11 @@ async def _login_with_saved_state(p):
 
 async def _login_manually(p, save_login=False):
     print("Login in manually...")
-    browser = await p.chromium.launch(headless=False)
-    context = await browser.new_context()
+    browser = await p.chromium.launch(
+        headless=False,
+        args=["--start-maximized"]
+    )
+    context = await browser.new_context(viewport=None)
     page = await context.new_page()
     print("Navigating to LinkedIn login page...")
     await page.goto("https://www.linkedin.com/login")

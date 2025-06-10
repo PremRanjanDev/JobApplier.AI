@@ -3,10 +3,7 @@ from playwright.async_api import async_playwright
 async def easy_apply(page, job_title, location):
     """Performs the Easy Apply process for a job on LinkedIn."""
     print(f"Searching for jobs: {job_title} in {location}")
-    await page.goto("https://www.linkedin.com/jobs/")
-    await page.fill('input[aria-label="Search by title, skill, or company"]', job_title)
-    await page.fill('input[aria-label="Location"]', location)
-    await page.click('button[aria-label="Search"]')
+    await page.goto(f"https://www.linkedin.com/jobs/search/?keywords={job_title}&location={location}&f_AL=true")
     
     print("Waiting for job listings to load...")
     await page.wait_for_selector('.job-card-container--clickable')

@@ -14,7 +14,7 @@ async def _login_with_saved_state(p):
     await page.goto("https://www.linkedin.com/feed/")
     return browser, page
 
-async def _login_manually(p, save_state):
+async def _login_manually(p, save_login=False):
     print("Login in manually...")
     browser = await p.chromium.launch(headless=False)
     context = await browser.new_context()
@@ -24,29 +24,18 @@ async def _login_manually(p, save_state):
     # Manual login required on first run.
     await page.wait_for_url("https://www.linkedin.com/feed/")
     print("Login successful.")
-    if save_state:
+    if save_login:
         print("Saving state...")
         await context.storage_state(path=LINKEDIN_STATE_FILE)
         print(f"Login state saved to {LINKEDIN_STATE_FILE}")
     return browser, page
 
-async def login(p, save_state=False):
+async def login(p, save_login=False):
     """Logs in to LinkedIn if needed and returns the browser and page objects.
     Optionally saves the browser state for future sessions."""
-    if save_state:
+    if save_login:
         pathlib.Path(os.path.dirname(LINKEDIN_STATE_FILE)).mkdir(parents=True, exist_ok=True)
     if os.path.exists(LINKEDIN_STATE_FILE):
         return await _login_with_saved_state(p)
     else:
-        return await _login_manually(p, save_state)
-
-async def main():
-    async with async_playwright() as p:
-        browser, page = await login(p, save_state=True)
-        # Keep browser open for manual inspection or further automation
-        print("Browser and page are ready for further actions.")
-        await page.wait_for_timeout(10000)  # Keep open for 10 seconds as an example
-        await browser.close()
-
-if __name__ == "__main__":
-    asyncio.run(main())
+        return await _login_manually(p, save_login)

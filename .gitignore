@@ -136,5 +136,8 @@ dist
 .pnp.*
 
 # User data
-user_data/*
+user_data/
+
+# pycache files
+__pycache__/
 

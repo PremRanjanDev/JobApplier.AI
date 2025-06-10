@@ -5,7 +5,7 @@ async def easy_apply(page, job_title, location):
     print(f"Searching for jobs: {job_title} in {location}")
     await page.goto("https://www.linkedin.com/jobs/")
     await page.fill('input[aria-label="Search by title, skill, or company"]', job_title)
-    await page.fill('input[aria-label="Search by location"]', location)
+    await page.fill('input[aria-label="Location"]', location)
     await page.click('button[aria-label="Search"]')
     
     print("Waiting for job listings to load...")

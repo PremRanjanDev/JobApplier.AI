@@ -1,5 +1,3 @@
-from playwright.async_api import async_playwright
-
 async def easy_apply(page, job_title, location):
     """Performs the Easy Apply process for a job on LinkedIn."""
     print(f"Searching for jobs: {job_title} in {location}")

@@ -137,6 +137,7 @@ dist
 
 # User data
 user_data/
+keys/
 
 # pycache files
 __pycache__/

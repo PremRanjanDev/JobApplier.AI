@@ -88,7 +88,7 @@ user_data/
 - The project is designed for easy extension to other AI providers and job platforms.
 
 ## Clear user login data
-To clear saved LinkedIn login state, delete the file:
+To clear saved login state, delete the files (as required):
 ```
 user_data/linkedin_state.json
 ```

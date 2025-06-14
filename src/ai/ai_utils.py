@@ -1,19 +1,40 @@
-from .ai_provider_openai import get_openai_response
 import json
+import re
+from .ai_provider_openai import get_openai_response
+
+def transform_to_dict(text):
+    """
+    Extracts the first JSON object or array from a string, even if surrounded by markdown or explanations,
+    and returns it as a Python object (dict or list).
+    """
+    # Try to find a JSON code block
+    match = re.search(r"```json\s*([\s\S]+?)\s*```", text, re.IGNORECASE)
+    if match:
+        json_str = match.group(1)
+    else:
+        # Fallback: try to find the first {...} or [...] block
+        match = re.search(r"({[\s\S]+})", text) or re.search(r"(\[[\s\S]+\])", text)
+        if match:
+            json_str = match.group(1)
+        else:
+            # Fallback: try to parse the whole text
+            json_str = text
+    try:
+        return json.loads(json_str)
+    except Exception as e:
+        print("Error parsing JSON from AI response:", e)
+        print("Raw response:", text)
+        return None
 
 async def read_job_info_by_ai(html):
     prompt = (
         "Given the following HTML, parse and provide details like id, title, company, location, type, etc. "
-        "Return a JSON object with: id, title, company, location, type, and any other relevant details. "
+        "Return ONLY a valid JSON object with: id, title, company, location, type, and any other relevant details. "
+        "Do not include any explanation, markdown, or text before or after the JSON. "
         "HTML: " + html
     )
     text = await get_openai_response(prompt)
-    try:
-        return json.loads(text)
-    except Exception as e:
-        print("Error parsing AI response:", e)
-        print("Raw response:", text)
-        return {}
+    return transform_to_dict(text)
 
 async def read_job_form_by_ai(html):
     prompt = (
@@ -23,14 +44,9 @@ async def read_job_form_by_ai(html):
         "Return a JSON array of these objects. HTML: " + html
     )
     text = await get_openai_response(prompt)
-    try:
-        return json.loads(text)
-    except Exception as e:
-        print("Error parsing AI response:", e)
-        print("Raw response:", text)
-        return []
+    return transform_to_dict(text)
 
 # This function is the AI abstraction layer. You can switch between OpenAI, Gemini or other providers here.
 async def read_by_ai(prompt):
-    # OpenAI
-    return await get_openai_response(prompt)
+    text = await get_openai_response(prompt)
+    return transform_to_dict(text)

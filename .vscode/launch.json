@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug LinkedIn Script",
+      "type": "python",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/scripts/apply_from_linkedin.py",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src"
+      },
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

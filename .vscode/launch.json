@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "Debug LinkedIn Script",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/src/scripts/apply_from_linkedin.py",
       "env": {

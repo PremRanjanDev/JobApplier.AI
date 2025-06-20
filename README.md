@@ -10,9 +10,8 @@ AI-powered Job Application Automation
 
 ## Project Structure
 ```
-scripts/
-  apply_from_linkedin.py   # Script to Start the LinkedIn Easy Apply process
 src/
+  main.py                  # Main entry point for running the job application automation
   ai/
     ai_utils.py            # Provider-agnostic AI abstraction layer
     ai_provider_openai.py  # OpenAI-specific logic
@@ -45,42 +44,20 @@ user_data/
    - To clear saved LinkedIn login, delete `user_data/linkedin_state.json`.
 
 ## How to Run
-### From the Terminal
-- **From the project root:**
-  ```sh
-  PYTHONPATH=src python3 -m linkedin
-  ```
-  or to run the script directly (with correct imports):
-  ```sh
-  PYTHONPATH=. python3 scripts/apply_from_linkedin.py
-  ```
 
-### Debugging in VS Code
-1. Open the project in VS Code.
-2. Go to the Run and Debug panel (play icon with a bug).
-3. Select **"Debug LinkedIn Script"** (or your custom config) from the dropdown.
-4. Press F5 or click the green Start Debugging button.
+### From the command line
 
-**Sample `.vscode/launch.json`:**
-```json
-{
-  "version": "0.2.0",
-  "configurations": [
-    {
-      "name": "Debug LinkedIn Script",
-      "type": "python",
-      "request": "launch",
-      "program": "${workspaceFolder}/scripts/apply_from_linkedin.py",
-      "env": {
-        "PYTHONPATH": "${workspaceFolder}"
-      },
-      "cwd": "${workspaceFolder}"
-    }
-  ]
-}
+```sh
+python src/main.py
 ```
 
-- This ensures all imports work and you can set breakpoints anywhere in your code.
+You will be prompted for your LinkedIn credentials, job keyword, and location.
+
+### Debug in VS Code
+
+- Use the provided `.vscode/launch.json` configuration.
+- The entry point is now `src/main.py`.
+- Make sure your `PYTHONPATH` includes the project root for absolute imports.
 
 ## Notes
 - Always use absolute imports in your code (e.g., `from ai.ai_utils import ...`).

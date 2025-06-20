@@ -1,6 +1,6 @@
 import json
 import re
-from .ai_provider_openai import get_openai_response
+from .openai_provider import get_openai_response
 
 def transform_to_dict(text):
     """
@@ -26,7 +26,7 @@ def transform_to_dict(text):
         print("Raw response:", text)
         return None
 
-def trim_html(html):
+def minify_html(html):
     """
     Minifies the HTML by removing unnecessary whitespace, newlines, and spaces between tags.
     """
@@ -38,13 +38,12 @@ def trim_html(html):
     html = re.sub(r'\s{2,}', ' ', html)
     return html.strip()
 
-
 async def read_job_info_by_ai(html):
     prompt = (
         "Given the following HTML, parse and provide details like id, title, company, location, type, if applied, selector with job id attribute, etc. "
         "Return ONLY a valid JSON object with: id, title, company, location, type, applied, selector and any other relevant details. "
         "Do not include any explanation, markdown, or text before or after the JSON. "
-        "HTML: " + trim_html(html)
+        "HTML: " + minify_html(html)
     )
     text = await get_openai_response(prompt)
     return transform_to_dict(text)
@@ -52,12 +51,13 @@ async def read_job_info_by_ai(html):
 async def read_job_form_by_ai(html):
     prompt = (
         "Given the following HTML of a job application form, extract all input fields. "
-        "For each field, return a JSON object with: selector (CSS selector), type (text, radio, checkbox, etc.), "
-        "label (the visible label or question), and options (for radio/checkbox, as a list of label and selector). "
-        "Return a JSON array of these objects. HTML: " + trim_html(html)
+        "For each field, return a JSON object with: selector (CSS selector), type (html control like text, radio, checkbox, etc.), "
+        "label (the visible label or question text), and options (top 10 only, for radio/checkbox, as a list of label and selector). "
+        "Return ONLY a valid JSON array of these objects, with NO explanation, markdown, or text before or after the JSON. "
+        "HTML: " + minify_html(html)
     )
     text = await get_openai_response(prompt)
-    return transform_to_dict(text)
+    return transform_to_dict(minify_html(text))
 
 # This function is the AI abstraction layer. You can switch between OpenAI, Gemini or other providers here.
 async def read_by_ai(prompt):

@@ -14,18 +14,18 @@ src/
   main.py                  # Main entry point for running the job application automation
   ai/
     ai_utils.py            # Provider-agnostic AI abstraction layer
-    ai_provider_openai.py  # OpenAI-specific logic
+    openai_provider.py     # OpenAI-specific logic
     __init__.py
   linkedin/
-    easy_apply.py          # Main job application logic
+    easy_apply.py          # LinkedIn job application logic
     login.py               # LinkedIn login automation
     __init__.py
   utils/
     json_utils.py          # JSON file utilities
     csv_utils.py           # CSV file utilities
     __init__.py
-output/
-  linkedin/                # Application logs and results
+output/                    # Application logs and results
+  linkedin/
 keys/
   openai-key.txt           # Your OpenAI API key
 user_data/

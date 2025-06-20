@@ -1,7 +1,6 @@
-import asyncio
 from openai import OpenAI
 
-async def get_openai_response(prompt: str, model: str = "gpt-4.1"):
+def get_openai_response(prompt: str, model: str = "gpt-4.1"):
     """
     Sends a prompt to OpenAI's Responses API and returns the raw output text.
     """
@@ -11,20 +10,17 @@ async def get_openai_response(prompt: str, model: str = "gpt-4.1"):
         raise RuntimeError("OpenAI API key not found in keys/openai-key.txt")
     client = OpenAI(api_key=openai_api_key)
 
-    loop = asyncio.get_event_loop()
-    def sync_call():
-        response = client.responses.create(
-            model=model,
-            input=prompt
-        )
-        return response.output_text
-    text = await loop.run_in_executor(None, sync_call)
-    return text
+    response = client.responses.create(
+        model=model,
+        input=prompt
+    )
+    # Extract the output text from the response object
+    return response.output_text
 
-async def basic_openai_test():
+def basic_openai_test():
     """A basic test function that sends a prompt to OpenAI and prints the response."""
-    text = await get_openai_response("Write a one-sentence bedtime story about a unicorn.")
-    print(text)
+    response = get_openai_response("Write a one-sentence bedtime story about a unicorn.")
+    print(response.output_text)
 
 if __name__ == "__main__":
-    asyncio.run(basic_openai_test())
+    basic_openai_test()

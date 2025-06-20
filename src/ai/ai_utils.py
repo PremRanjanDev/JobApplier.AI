@@ -38,17 +38,17 @@ def minify_html(html):
     html = re.sub(r'\s{2,}', ' ', html)
     return html.strip()
 
-async def read_job_info_by_ai(html):
+def read_job_info_by_ai(html):
     prompt = (
         "Given the following HTML, parse and provide details like id, title, company, location, type, if applied, selector with job id attribute, etc. "
         "Return ONLY a valid JSON object with: id, title, company, location, type, applied, selector and any other relevant details. "
         "Do not include any explanation, markdown, or text before or after the JSON. "
         "HTML: " + minify_html(html)
     )
-    text = await get_openai_response(prompt)
+    text = get_openai_response(prompt)
     return transform_to_dict(text)
 
-async def read_job_form_by_ai(html):
+def read_job_form_by_ai(html):
     prompt = (
         "Given the following HTML of a job application form, extract all input fields. "
         "For each field, return a JSON object with: selector (CSS selector), type (html control like text, radio, checkbox, etc.), "
@@ -56,10 +56,10 @@ async def read_job_form_by_ai(html):
         "Return ONLY a valid JSON array of these objects, with NO explanation, markdown, or text before or after the JSON. "
         "HTML: " + minify_html(html)
     )
-    text = await get_openai_response(prompt)
+    text = get_openai_response(prompt)
     return transform_to_dict(minify_html(text))
 
 # This function is the AI abstraction layer. You can switch between OpenAI, Gemini or other providers here.
-async def read_by_ai(prompt):
-    text = await get_openai_response(prompt)
+def read_by_ai(prompt):
+    text = get_openai_response(prompt)
     return transform_to_dict(text)

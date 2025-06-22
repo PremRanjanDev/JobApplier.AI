@@ -1,4 +1,4 @@
-from ai.ai_utils import read_job_info_by_ai, read_job_form_by_ai
+from ai.ai_helper import read_job_info_by_ai, read_job_form_by_ai
 from utils.json_utils import JsonFile
 import os
 from datetime import datetime

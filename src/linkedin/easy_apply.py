@@ -34,27 +34,27 @@ def apply_jobs_easy_apply(page, keyword, location):
         print("Processing job...")
         job_id = job.get_attribute('data-job-id')
         print(f"Job ID: {job_id}")
-        job_card_element_html = job.inner_html()
-        print("Extracting job info from HTML...")
-        job_info = read_job_info_by_ai(job_card_element_html)
-        print("AI returned the following job details:")
-        print(f"job_info: {job_info}")
-        if "selector" in job_info and job_info["selector"]:
-            try:
-                page.click(job_info["selector"], timeout=wait_for_control)
-                print(f"Clicked element with selector: {job_info['selector']}")
-            except Exception as e:
-                print(f"Failed to click element with selector {job_info['selector']}: {e}")
-        # Add additional info like datetime and append to the JSON file
-        job_info["record"] = "Job Info"
-        job_info["processed_at"] = datetime.now().isoformat()
-        json_file.append(job_info)
-
-        if job_info.get('applied', False):
-            print("Job already applied or Easy Apply button not found. Skipping this job.")
-            continue
-        
-        print(f"Processing job: {job_info.get('title', 'N/A')} at {job_info.get('company', 'N/A')} in {job_info.get('location', 'N/A')}")
+        # job_card_element_html = job.inner_html()
+        # print("Extracting job info from HTML...")
+        # job_info = read_job_info_by_ai(job_card_element_html)
+        # print("AI returned the following job details:")
+        # print(f"job_info: {job_info}")
+        # if "selector" in job_info and job_info["selector"]:
+        #     try:
+        #         page.click(job_info["selector"], timeout=wait_for_control)
+        #         print(f"Clicked element with selector: {job_info['selector']}")
+        #     except Exception as e:
+        #         print(f"Failed to click element with selector {job_info['selector']}: {e}")
+        # # Add additional info like datetime and append to the JSON file
+        # job_info["record"] = "Job Info"
+        # job_info["processed_at"] = datetime.now().isoformat()
+        # json_file.append(job_info)
+# 
+        # if job_info.get('applied', False):
+        #     print("Job already applied or Easy Apply button not found. Skipping this job.")
+        #     continue
+        # 
+        # print(f"Processing job: {job_info.get('title', 'N/A')} at {job_info.get('company', 'N/A')} in {job_info.get('location', 'N/A')}")
         
         applied = apply_job(page, job)
         if applied:
@@ -179,6 +179,8 @@ def apply_job(page, job):
         print("AI returned the following fields info:")
         print(fields_info)
 
+        get_field_values(fields_info)
+
         # Wait for the application form to load
         page.wait_for_selector('.artdeco-modal__content', timeout=wait_for_control)
 
@@ -187,3 +189,20 @@ def apply_job(page, job):
     except Exception as e:
         print(f"Error applying to job {getattr(job, 'title', 'Unknown')}: {e}")
         return False  # Indicate failure
+
+def get_field_values(fields_info):
+    """Fills out the application form field values based on the provided fields_info."""
+    for field, i in fields_info:
+        value = get_field_value(field)
+        fields_info[i]["value"] = value
+
+def get_field_value(field):
+    """Retrieves the value for a specific form field based on its type."""
+    field_type = field.get("type")
+    if field_type == "text":
+        return "Sample text value"
+    elif field_type == "radio":
+        return "Sample radio value"
+    elif field_type == "checkbox":
+        return "Sample checkbox value"
+    return None

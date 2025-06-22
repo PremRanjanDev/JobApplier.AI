@@ -1,6 +1,6 @@
 
 from email.mime import text
-from utils.common_uitls import minify_html, transform_to_object
+from utils.common_utils import minify_html, transform_to_object
 from .openai_provider import get_openai_response
 
 def read_job_info_by_ai(html):
@@ -17,7 +17,7 @@ def read_job_form_by_ai(html):
     prompt = (
         "Given the following HTML of a job application form, extract all input fields. "
         "For each field, return a JSON object with: selector (CSS selector), type (html control like text, radio, checkbox, etc.), "
-        "label (the visible label or question text), and options (top 10 only, for radio/checkbox, as a list of label and selector). "
+        "label (the visible label or question text), value (the current value of the field), and options (top 10 only, for radio/checkbox, as a list of label and selector). "
         "Return ONLY a valid JSON array of these objects, with NO explanation, markdown, or text before or after the JSON. "
         "HTML: " + minify_html(html)
     )

@@ -35,7 +35,7 @@ def apply_jobs_easy_apply(page, keyword, location):
         job_id = job.get_attribute('data-job-id')
         print(f"Job ID: {job_id}")
         job_card_element_html = job.inner_html()
-        print("Extracting job details from HTML...")
+        print("Extracting job info from HTML...")
         job_info = read_job_info_by_ai(job_card_element_html)
         print("AI returned the following job details:")
         print(f"job_info: {job_info}")
@@ -46,16 +46,17 @@ def apply_jobs_easy_apply(page, keyword, location):
             except Exception as e:
                 print(f"Failed to click element with selector {job_info['selector']}: {e}")
         # Add additional info like datetime and append to the JSON file
+        job_info["record"] = "Job Info"
         job_info["processed_at"] = datetime.now().isoformat()
         json_file.append(job_info)
 
         if job_info.get('applied', False):
             print("Job already applied or Easy Apply button not found. Skipping this job.")
             continue
-
+        
         print(f"Processing job: {job_info.get('title', 'N/A')} at {job_info.get('company', 'N/A')} in {job_info.get('location', 'N/A')}")
         
-        applied = apply_job(page, job, job_info)
+        applied = apply_job(page, job)
         if applied:
             print("Successfully applied.")
         else:
@@ -92,7 +93,7 @@ def fetch_job_list(page, job_title, location, page_number=1):
     print(f"Searching for jobs: {job_title} in {location}")
     page.goto(f"https://www.linkedin.com/jobs/search/?keywords={job_title}&location={location}&f_AL=true")
     
-    # Click the pagination button for the current page
+    print("Current page number:", page_number)
     if page_number > 1:
         pagination_selector = f'button[aria-label="Page {page_number}"]'
         try:
@@ -111,7 +112,7 @@ def fetch_job_list(page, job_title, location, page_number=1):
         prev_job_len = len(jobs)
         # Scroll the last job card into the center of the viewport for better visibility/loading
         page.evaluate(
-            '(el) => el.scrollIntoView({behavior: "smooth", block: "center"})',
+            '(el) => el.scrollIntoView({behavior: "smooth", block: "start"})',
             jobs[-1]
         )
         page.wait_for_timeout(1000)  # Wait for more jobs to load
@@ -119,7 +120,7 @@ def fetch_job_list(page, job_title, location, page_number=1):
     
     return jobs
 
-def apply_job(page, job, job_info):
+def apply_job(page, job):
     """Applies to a job using the Easy Apply button."""
     try:
         # Click on the job listing
@@ -142,6 +143,8 @@ def apply_job(page, job, job_info):
 
         # Wait for the job details page to load
         # Wait for the job details section and select it
+        job.click(timeout=wait_for_control)
+        print("Waiting for job details to load...")
         job_details_section = page.wait_for_selector(
             'div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"]',
             timeout=wait_for_control
@@ -155,21 +158,24 @@ def apply_job(page, job, job_info):
             if applied_message_elem:
                 applied_message = applied_message_elem.inner_text()
                 print(f"Already applied to this job. Status: {applied_message.strip()}")
-                return False
+                return False, "Already applied"
             print("Already applied or Easy Apply button not found. Skipping this job.")
-            return False
+            return False, "Already applied"
         # Click the Easy Apply button
         easy_apply_button.click()
 
         # Extract the DOM of the Easy Apply modal
         print("Extracting application form DOM...")
-        modal_html = page.inner_html('.artdeco-modal__content')
-        if not modal_html:
-            print("Could not extract the application form DOM. Skipping this job.")
-            return False
-
-        # Use the AI utility for form field extraction
+        application_form = page.wait_for_selector('.artdeco-modal__content', timeout=wait_for_control)
+        if not application_form:
+            print("Could not find the application form modal. Skipping this job.")
+            return False, "Application form not found"
+        
+        modal_html = application_form.inner_html()
         fields_info = read_job_form_by_ai(modal_html)
+        if not fields_info:
+            print("Failed to parse application form fields. Skipping this job.")
+            return False, "Failed to parse application form fields"
         print("AI returned the following fields info:")
         print(fields_info)
 

@@ -1,42 +1,7 @@
-import json
-import re
+
+from email.mime import text
+from utils.common_uitls import minify_html, transform_to_object
 from .openai_provider import get_openai_response
-
-def transform_to_dict(text):
-    """
-    Extracts the first JSON object or array from a string, even if surrounded by markdown or explanations,
-    and returns it as a Python object (dict or list).
-    """
-    # Try to find a JSON code block
-    match = re.search(r"```json\s*([\s\S]+?)\s*```", text, re.IGNORECASE)
-    if match:
-        json_str = match.group(1)
-    else:
-        # Fallback: try to find the first {...} or [...] block
-        match = re.search(r"({[\s\S]+})", text) or re.search(r"(\[[\s\S]+\])", text)
-        if match:
-            json_str = match.group(1)
-        else:
-            # Fallback: try to parse the whole text
-            json_str = text
-    try:
-        return json.loads(json_str)
-    except Exception as e:
-        print("Error parsing JSON from AI response:", e)
-        print("Raw response:", text)
-        return None
-
-def minify_html(html):
-    """
-    Minifies the HTML by removing unnecessary whitespace, newlines, and spaces between tags.
-    """
-    # Remove newlines and tabs
-    html = re.sub(r'[\n\r\t]+', '', html)
-    # Remove spaces between tags
-    html = re.sub(r'>\s+<', '><', html)
-    # Remove multiple spaces
-    html = re.sub(r'\s{2,}', ' ', html)
-    return html.strip()
 
 def read_job_info_by_ai(html):
     prompt = (
@@ -46,7 +11,7 @@ def read_job_info_by_ai(html):
         "HTML: " + minify_html(html)
     )
     text = get_openai_response(prompt)
-    return transform_to_dict(text)
+    return transform_to_object(text)
 
 def read_job_form_by_ai(html):
     prompt = (
@@ -57,9 +22,6 @@ def read_job_form_by_ai(html):
         "HTML: " + minify_html(html)
     )
     text = get_openai_response(prompt)
-    return transform_to_dict(minify_html(text))
+    return transform_to_object(text)
 
-# This function is the AI abstraction layer. You can switch between OpenAI, Gemini or other providers here.
-def read_by_ai(prompt):
-    text = get_openai_response(prompt)
-    return transform_to_dict(text)
+

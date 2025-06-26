@@ -7,6 +7,7 @@ wait_for_control = 5000 # 5 seconds timeout for waiting for controls
 
 def apply_jobs_easy_apply(page, keyword, location):
     """Performs the Easy Apply process for a jobs on LinkedIn."""
+    print("Starting the Easy Apply process...")
     # Create an output file to log the job applications
     output_dir = "output/linkedin"
     if not os.path.exists(output_dir):
@@ -122,24 +123,25 @@ def fetch_job_list(page, job_title, location, page_number=1):
 
 def apply_job(page, job):
     """Applies to a job using the Easy Apply button."""
+    print("Applying to job...")
     try:
         # Click on the job listing
-        # job_id = job.get_attribute('data-job-id')
-        # if not job_id:
-        #     print("Job element does not have a data-job-id attribute.")
-        #     return False
+        job_id = job.get_attribute('data-job-id')
+        if not job_id:
+            print("Job element does not have a data-job-id attribute.")
+            return False
         # Re-query the job element to ensure it is attached to the DOM
-        # job_selector = f'.job-card-container--clickable[data-job-id="{job_id}"]'
-        # fresh_job = page.query_selector(job_selector)
-        # if not fresh_job:
-            # print(f"Could not find job element with selector: {job_selector}")
-            # return False
+        job_selector = f'.job-card-container--clickable[data-job-id="{job_id}"]'
+        fresh_job = page.query_selector(job_selector)
+        if not fresh_job:
+            print(f"Could not find job element with selector: {job_selector}")
+            return False
         # Re-query the element right before clicking to avoid stale element reference
-        # fresh_job = page.query_selector(job_selector)
-        # if not fresh_job:
-        #     print(f"Job element became detached before clicking: {job_selector}")
-        #     return False
-        # fresh_job.click(timeout=wait_for_control)
+        fresh_job = page.query_selector(job_selector)
+        if not fresh_job:
+            print(f"Job element became detached before clicking: {job_selector}")
+            return False
+        fresh_job.click(timeout=wait_for_control)
 
         # Wait for the job details page to load
         # Wait for the job details section and select it
@@ -182,7 +184,7 @@ def apply_job(page, job):
         get_field_values(fields_info)
 
         # Wait for the application form to load
-        page.wait_for_selector('.artdeco-modal__content', timeout=wait_for_control)
+        # page.wait_for_selector('.artdeco-modal__content', timeout=wait_for_control)
 
         # Fill out the application form (this part will be handled by AI fields_info)
         return True  # Indicate success
@@ -192,7 +194,7 @@ def apply_job(page, job):
 
 def get_field_values(fields_info):
     """Fills out the application form field values based on the provided fields_info."""
-    for field, i in fields_info:
+    for field, i in fields_info.items():
         value = get_field_value(field)
         fields_info[i]["value"] = value
 

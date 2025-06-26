@@ -5,7 +5,7 @@ def minify_html(html_str):
     """
     Minifies the given HTML content by removing unnecessary whitespace, newlines, and spaces between tags.
     """
-    print("Minifying HTML content...")
+    print("Minifying HTML content...", len(html_str))
     # Remove newlines and tabs
     html_str = re.sub(r'[\n\r\t]+', '', html_str)
     # Remove spaces between tags
@@ -14,11 +14,11 @@ def minify_html(html_str):
     html_str = re.sub(r'\s{2,}', ' ', html_str)
     return html_str.strip()
 
-def minify_my_json(json_str):
+def minify_json(json_str):
     """
     Minifies the given JSON content by removing whitespace outside of string values.
     """
-    print("Minifying MY JSON content...")
+    print("Minifying MY JSON content...", len(json_str))
     try:
         obj = json.loads(json_str)
         return json.dumps(obj, separators=(',', ':'))
@@ -32,6 +32,7 @@ def extract_valid_json(text):
     removing any surrounding markdown, explanations, or extra text.
     Returns the JSON string, or None if not found.
     """
+    print("Extracting valid JSON from text...", len(text))
     # Try to find a JSON code block
     match = re.search(r"```json\s*([\s\S]+?)\s*```", text, re.IGNORECASE)
     if match:
@@ -51,7 +52,7 @@ def transform_to_object(json_text):
     Converts a JSON string to a Python object (dict or list).
     Handles both single objects and arrays.
     """
-    print("Transforming JSON text to object...")
+    print("Transforming JSON text to object...", len(json_text))
     try:
         return json.loads(json_text)
     except Exception as e:

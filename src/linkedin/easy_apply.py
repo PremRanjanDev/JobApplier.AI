@@ -3,7 +3,7 @@ from utils.json_utils import JsonFile
 import os
 from datetime import datetime
 
-wait_for_control = 5000 # 5 seconds timeout for waiting for controls
+max_wait_for_control = 5000 # 5 seconds timeout for waiting for controls
 
 def apply_jobs_easy_apply(page, keyword, location):
     """Performs the Easy Apply process for a jobs on LinkedIn."""
@@ -98,8 +98,8 @@ def fetch_job_list(page, job_title, location, page_number=1):
     if page_number > 1:
         pagination_selector = f'button[aria-label="Page {page_number}"]'
         try:
-            page.wait_for_selector(pagination_selector, timeout=wait_for_control)
-            page.click(pagination_selector, timeout=wait_for_control)
+            page.wait_for_selector(pagination_selector, timeout=max_wait_for_control)
+            page.click(pagination_selector, timeout=max_wait_for_control)
             page.wait_for_timeout(2000)  # Wait for the page to load jobs
         except Exception as e:
             print(f"Could not click pagination button for page {page_number}: {e}")
@@ -141,15 +141,15 @@ def apply_job(page, job):
         if not fresh_job:
             print(f"Job element became detached before clicking: {job_selector}")
             return False
-        fresh_job.click(timeout=wait_for_control)
+        fresh_job.click(timeout=max_wait_for_control)
 
         # Wait for the job details page to load
         # Wait for the job details section and select it
-        job.click(timeout=wait_for_control)
+        job.click(timeout=max_wait_for_control)
         print("Waiting for job details to load...")
         job_details_section = page.wait_for_selector(
             'div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"]',
-            timeout=wait_for_control
+            timeout=max_wait_for_control
         )
         easy_apply_button = None
         if job_details_section:
@@ -168,7 +168,10 @@ def apply_job(page, job):
 
         # Extract the DOM of the Easy Apply modal
         print("Extracting application form DOM...")
-        application_form = page.wait_for_selector('.artdeco-modal__content', timeout=wait_for_control)
+        application_form = page.wait_for_selector(
+            '[class*="easy-apply-modal"], [class^="artdeco-modal"]',
+            timeout=max_wait_for_control
+        )
         if not application_form:
             print("Could not find the application form modal. Skipping this job.")
             return False, "Application form not found"
@@ -180,6 +183,12 @@ def apply_job(page, job):
             return False, "Failed to parse application form fields"
         print("AI returned the following fields info:")
         print(fields_info)
+        # To select a value from a dropdown, use page.select_option with the selector and value
+        # dropdown_field = next((f for f in fields_info if f.get('type') == 'dropdown'), None)
+        # if dropdown_field and dropdown_field.get('options'):
+        #     # Select the third option as an example
+        #     option_value = dropdown_field['options'][2]['value']
+            # page.select_option(dropdown_field['selector'], option_value)
 
         get_field_values(fields_info)
 

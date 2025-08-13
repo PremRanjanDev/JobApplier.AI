@@ -24,7 +24,7 @@ def read_job_form_by_ai(html):
         "For each field, return a JSON object with: selector (CSS selector), type (html control like text, radio, checkbox, etc.), "
         "label (the visible label or question text), value (the current value of the field, or selected option), and options (top 10 only, for radio/checkbox, as a list of label and selector). "
         "Return ONLY a valid JSON array of these objects, with NO explanation, markdown, or text before or after the JSON. "
-        "HTML: " + minify_html(html)
+        "\nHTML: " + minify_html(html)
     )
     response = ask_openai(prompt)
     return transform_to_object(response)

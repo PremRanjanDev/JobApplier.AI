@@ -2,7 +2,7 @@
 from email.mime import text
 from .gemini_provider import ask_gemini
 from utils.common_utils import minify_html, transform_to_object
-from .openai_provider import ask_openai
+from .openai_provider import ask_openai, parse_form
 
 def read_job_info_by_ai(html):
     """Extracts job details from the provided HTML using AI."""
@@ -19,14 +19,18 @@ def read_job_info_by_ai(html):
 def read_job_form_by_ai(html):
     """Extracts job application form fields from the provided HTML using AI."""
     print("Extracting job form fields using AI...", len(html))
-    prompt = (
-        "Given the following HTML of a job application form, extract all input fields. "
-        "For each field, return a JSON object with: selector (CSS selector), type (html control like text, radio, checkbox, etc.), "
-        "label (the visible label or question text), value (the current value of the field, or selected option), and options (top 10 only, for radio/checkbox, as a list of label and selector). "
-        "Return ONLY a valid JSON array of these objects, with NO explanation, markdown, or text before or after the JSON. "
-        "\nHTML: " + minify_html(html)
-    )
-    response = ask_openai(prompt)
+    response = parse_form(minify_html(html), "gpt-4.1")
     return transform_to_object(response)
 
-
+# def read_job_form_by_ai(html):
+    # """Extracts job application form fields from the provided HTML using AI."""
+    # print("Extracting job form fields using AI...", len(html))
+    # prompt = (
+    #     "Given the following HTML of a job application form, extract all input fields. "
+    #     "For each field, return a JSON object with: selector (CSS selector), type (html control like text, radio, checkbox, etc.), "
+    #     "label (the visible label or question text), value (the current value of the field, or selected option), and options (top 10 only, for radio/checkbox, as a list of label and selector). "
+    #     "Return ONLY a valid JSON array of these objects, with NO explanation, markdown, or text before or after the JSON. "
+    #     "\nHTML: " + minify_html(html)
+    # )
+    # response = ask_openai(prompt)
+    # return transform_to_object(response)

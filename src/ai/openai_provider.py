@@ -7,7 +7,7 @@ OPENAI_KEY_FILE = 'keys/openai-key.txt'
 RUN_DATA_FILE = 'user_data/run_data.json'
 RESUME_FILE = 'user_data/info/Prem_Ranjan_Java_Dev.pdf'
 USER_PROFILE_JSON_FILE = 'user_data/info/user_profile.json'
-CACHE_FILE = 'user_data/prompt_cache.json'
+CACHE_FILE = 'user_data/qnas_cache.json'
 
 tools = [
     {

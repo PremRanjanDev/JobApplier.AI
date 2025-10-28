@@ -102,7 +102,7 @@ def fetch_job_list(page, job_title, location, page_number=1):
         pagination_selector = f'button[aria-label="Page {page_number}"]'
         try:
             page.wait_for_selector(pagination_selector, timeout=control_wait_timeout)
-            page.click(pagination_selector, timeout=control_wait_timeout)
+            page.click(pagination_selector, timeout=control_click_timeout)
             page.wait_for_timeout(2000)  # Wait for the page to load jobs
         except Exception as e:
             print(f"Could not click pagination button for page {page_number}: {e}")
@@ -126,7 +126,7 @@ def fetch_job_list(page, job_title, location, page_number=1):
 
 def extract_form_fields(element):
     """Extracts all input/select/radio fields and their current values from the Easy Apply modal,
-    and also retrieves the modal header text."""
+    and also retrieves the modal header text and progress percent (if present)."""
     return element.evaluate('''(modal) => {
 
         // Get header text
@@ -134,6 +134,14 @@ def extract_form_fields(element):
         const headerElem = modal.querySelector('.artdeco-modal__header h2');
         if (headerElem) {
             headerText = headerElem.textContent.trim();
+        }
+
+        // Try to read application progress
+        let progress = null;
+        const progressElem = modal.querySelector('span[role="note"][aria-label*="progress"], span[aria-label*="progress"], span[role="note"]');
+        if (progressElem) {
+            // Return the visible inner text (e.g. "25%")
+            progress = (progressElem.textContent || '').trim();
         }
 
         const fields = [];
@@ -204,7 +212,7 @@ def extract_form_fields(element):
             });
         });
 
-        return { id: modal.id, header: headerText, fields: fields };
+        return { id: modal.id, header: headerText, progress: progress, fields: fields };
     }''')
 
 def extract_step_controls(element):
@@ -261,12 +269,13 @@ def extract_step_controls(element):
         return controls;
     }''')
 
-def form_state(form_info):
+def form_state(form_info, step_controls):
     """Returns a hashable representation of the form's header and its fields/values."""
     return json.dumps({
         "id": form_info.get("id", ""),
         "header": form_info.get("header", ""),
-        "fields": [{f["label"]: f["value"]} for f in form_info.get("fields", [])]
+        "fields": [{f["label"]: f["value"]} for f in form_info.get("fields", [])],
+        "nextButton": step_controls.get("nextButton", None)
     })
 
 def apply_job(page, job):
@@ -311,36 +320,44 @@ def apply_job(page, job):
         previous_state = None
         while True:
             print("Extracting application form DOM...")
-            application_form = page.wait_for_selector(
-                '[class*="easy-apply-modal"], [class^="artdeco-modal"]',
-                timeout=control_wait_timeout
-            )
+            try:
+                application_form = page.wait_for_selector(
+                    '[class*="easy-apply-modal"], [class^="artdeco-modal"]',
+                    timeout=control_wait_timeout
+                )
+            except Exception:
+                # Modal disappeared before we could read it — assume finished
+                print("Application modal not found (may have been closed). Assuming finished.")
+                return True, "Application finished"
+
             if not application_form:
                 print("Could not find the application form modal. Skipping this job.")
                 return False, "Application form not found"
 
             form_info = extract_form_fields(application_form)
             input_fields = form_info['fields']
-            current_state = form_state(form_info)
+            step_controls = extract_step_controls(application_form)
+            current_state = form_state(form_info, step_controls)
 
             if previous_state == current_state:
                 print("Form state did not change after filling. Dismissing application.")
                 dismiss_job_apply(page, step_controls)
                 return False, "Form stuck, cannot proceed"
 
+            # Note: pass the form ElementHandle so field operations are scoped to the modal
             fill_all_fields(page, input_fields)
             previous_state = current_state
 
-            step_controls = extract_step_controls(application_form)
-
-            # Try to click next or submit, or dismiss if stuck
+            # Try to click next, submit or done, or dismiss if stuck
             if step_controls and step_controls['nextButton']:
-                print("Clicking Next button...")
-                page.click(step_controls['nextButton']['selector'], timeout=control_wait_timeout)
+                page.wait_for_timeout(control_click_timeout)
+                print("Clicking Next button... ", step_controls['nextButton']['label'])
+                page.click(step_controls['nextButton']['selector'], timeout=control_click_timeout)
+                page.wait_for_timeout(control_click_timeout)
             else:
                 print("No Next button found, dismissing application.")
                 dismiss_job_apply(page, step_controls)
-                return False
+                return False, "No next button"
     except Exception as e:
         print(f"Error applying to job {getattr(job, 'title', 'Unknown')}: {e}")
         dismiss_job_apply(page, None)
@@ -352,7 +369,7 @@ def dismiss_job_apply(page, step_controls=None):
         step_controls = extract_step_controls(page)
     
     if step_controls and step_controls['closeButton']:
-        page.click(step_controls['closeButton']['selector'], timeout=control_wait_timeout)
+        page.click(step_controls['closeButton']['selector'], timeout=control_click_timeout)
         try:
             confirmation_modal = page.wait_for_selector(
                 '[role="alertdialog"], [class*="layer-confirmation"]',
@@ -361,9 +378,9 @@ def dismiss_job_apply(page, step_controls=None):
             if confirmation_modal:
                 confirmation_controls = extract_step_controls(confirmation_modal)
                 if confirmation_controls and confirmation_controls['discardButton']:
-                     page.click(confirmation_controls['discardButton']['selector'], timeout=control_wait_timeout)
+                     page.click(confirmation_controls['discardButton']['selector'], timeout=control_click_timeout)
                 elif confirmation_controls and confirmation_controls['closeButton']:
-                    page.click(confirmation_controls['closeButton']['selector'], timeout=control_wait_timeout)
+                    page.click(confirmation_controls['closeButton']['selector'], timeout=control_click_timeout)
         except Exception as e:
             print(f"Confirmation modal did not appear or could not discard: {e}")
     else:

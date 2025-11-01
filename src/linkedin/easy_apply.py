@@ -125,7 +125,7 @@ def fetch_job_list(page, job_title, location, page_number=1):
     return jobs
 
 def extract_form_fields(element):
-    """Extracts all input/select/radio fields and their current values from the Easy Apply modal,
+    """Extracts all input/select/radio/combobox fields and their current values from the Easy Apply modal,
     and also retrieves the modal header text and progress percent (if present)."""
     return element.evaluate('''(modal) => {
 
@@ -146,8 +146,35 @@ def extract_form_fields(element):
 
         const fields = [];
 
-        // Text inputs
-        modal.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"]').forEach(input => {
+        // Combobox / autocomplete inputs (role="combobox")
+        modal.querySelectorAll('input[role="combobox"]').forEach(input => {
+            const listId = input.getAttribute('aria-controls') || input.getAttribute('aria-owns') || '';
+            let options = [];
+            if (listId) {
+                const listEl = modal.querySelector('#' + listId) || document.querySelector('#' + listId);
+                if (listEl) {
+                    options = Array.from(listEl.querySelectorAll('[role="option"], .basic-typeahead__selectable')).map((opt, idx) => {
+                        const textElem = opt.querySelector('.search-typeahead-v2__hit-text') || opt.querySelector('span') || opt;
+                        const txt = (textElem && textElem.textContent) ? textElem.textContent.trim() : (opt.textContent || '').trim();
+                        return {
+                            label: txt,
+                            selector: opt.id ? ('#' + opt.id) : null
+                        };
+                    });
+                }
+            }
+            fields.push({
+                type: 'combobox',
+                label: input.labels && input.labels[0] ? input.labels[0].querySelector('span[aria-hidden="true"]')?.textContent.trim() || input.labels[0].innerText.trim() : '',
+                selector: '#' + input.id,
+                value: input.value || '',
+                listbox: listId,
+                options: options
+            });
+        });
+
+        // Text inputs (exclude comboboxes handled above)
+        modal.querySelectorAll('input[type="text"]:not([role="combobox"]), input[type="email"], input[type="tel"]').forEach(input => {
             fields.push({
                 type: 'text',
                 label: input.labels && input.labels[0] ? input.labels[0].querySelector('span[aria-hidden="true"]')?.textContent.trim() || input.labels[0].innerText.trim() : '',
@@ -315,6 +342,7 @@ def apply_job(page, job):
             print("Already applied or Easy Apply button not found. Skipping this job.")
             return False, "Already applied"
         easy_apply_button.click()
+        page.wait_for_timeout(control_click_timeout)
 
         # Multi-step form loop
         previous_state = None
@@ -387,15 +415,19 @@ def dismiss_job_apply(page, step_controls=None):
         print("Could not find cancel button in step controls.") # Indicate failure
 
 def fill_all_fields(page, input_fields):
-    """Fills out all fields in the application form based on the provided input_fields."""
+    """Fills out all fields in the application form based on the provided input_fields.
+    If form_element (ElementHandle) is provided, actions will try to scope inside it first."""
     for input_field in input_fields:
         if input_field['type'] == 'text':
             enter_text_field(page, input_field)
         elif input_field['type'] in ['select', 'radio']:
             select_option(page, input_field)
+        elif input_field['type'] == 'combobox':
+            fill_combobox(page, input_field)
 
 def enter_text_field(page, input_field):
     """Enters text into a text field based on the provided input_field."""
+    print("Filling text field:", input_field['label'])
     selector = input_field['selector']
     current_value = input_field['value']
     if not current_value:
@@ -404,6 +436,7 @@ def enter_text_field(page, input_field):
 
 def select_option(page, field_info):
     """Generically selects an option for dropdown or radio group based on the provided field_info."""
+    print("Selecting option for field:", field_info['label'])
     selector = field_info['selector']
     options = field_info.get('options', [])
     current_value = field_info['value']
@@ -420,7 +453,6 @@ def select_control(page, option_selector, field_selector, option_value=None):
     """
     Tries to select a control by first using select_option (for dropdowns), then check (for radios/checkboxes), then click input, then click label.
     """
-    # Try select_option first (for dropdowns)
     if option_value is not None:
         try:
             page.select_option(field_selector, option_value, timeout=control_click_timeout)
@@ -450,3 +482,23 @@ def select_control(page, option_selector, field_selector, option_value=None):
         return
     except Exception as e:
         print(f"Click label failed for {option_selector}: {e}")
+
+def fill_combobox(page, field_info):
+    """Fills out a combobox (autocomplete) field based on the provided field_info."""
+    print("Filling combobox field:", field_info['label'])
+    selector = field_info['selector']
+    label = field_info.get('label', '')
+    current_value = field_info.get('value', '')
+    new_value = get_text_answer(label)
+
+    if (current_value == new_value):
+        return
+
+    try:
+        page.fill(selector, new_value)
+        option_query = '[role="option"]' #, .basic-typeahead__selectable
+        page.wait_for_selector(option_query, timeout=control_wait_timeout)
+        candidates = page.query_selector_all(option_query)
+        candidates[0].click(timeout=control_click_timeout)
+    except Exception as e:
+        print(f"Failed to select combobox option for {label}: {e}")

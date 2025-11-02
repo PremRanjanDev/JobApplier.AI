@@ -1,13 +1,13 @@
 from openai import OpenAI
 import json
 import os
+import datetime
 
 # Constants for file paths
 OPENAI_KEY_FILE = 'keys/openai-key.txt'
-RUN_DATA_FILE = 'user_data/run_data.json'
-RESUME_FILE = 'user_data/info/Prem_Ranjan_Java_Dev.pdf'
-USER_PROFILE_JSON_FILE = 'user_data/info/user_profile.json'
-CACHE_FILE = 'user_data/qnas_cache.json'
+RUN_DATA_FILE = 'my_data/run_data.json'
+RESUME_FOLDER = 'my_data/resume'
+CACHE_FILE = 'my_data/qnas_cache.json'
 
 tools = [
     {
@@ -188,52 +188,85 @@ def get_user_details_conv_id(model: str):
     except FileNotFoundError:
         run_data = {}
 
-    key = 'user_detail_query_id'
-    user_detail_query_id = run_data.get(key)
-    if not user_detail_query_id:
-        client = get_openai_client()
-        # Attach both PDF and JSON files
-        resume_file = client.files.create(
-            file=open(RESUME_FILE, "rb"),
-            purpose="user_data"
-        )
-        with open(USER_PROFILE_JSON_FILE, "r") as f:
-            profile_text = f.read()
+    key = 'user_detail_chat'
+    user_detail = run_data.get(key)
+    if user_detail and isinstance(user_detail, dict):
+        return user_detail.get("chat_id")
 
-        prompt_text = f"""
-        These are my resume (PDF) and user profile (JSON as text below). Act as a resume bot and answer next queries based on the information in these files.
-        User profile JSON:
-        {profile_text}
-        Simply return '' if not found or unsure.
-        Rules:
-        - For each question, answer with the value from the provided information in the files.
-        - Important: For numeric answers provide as integer value.
-        - No extra text, explanations, or quotation marks; answer with the value only.
-        """
+    client = get_openai_client()
+    
+    # Check if resume folder exists
+    if not os.path.exists(RESUME_FOLDER):
+        raise RuntimeError(f"Resume folder not found: {RESUME_FOLDER}")
+        
+    # Get all files in resume folder
+    resume_files = [f for f in os.listdir(RESUME_FOLDER) 
+                   if os.path.isfile(os.path.join(RESUME_FOLDER, f))]
+    
+    # Validate single resume file
+    if not resume_files:
+        raise RuntimeError(f"No resume file found in folder: {RESUME_FOLDER}")
+    if len(resume_files) > 1:
+        raise RuntimeError("Multiple files found in resume folder. Expected single file.")
 
-        response = client.responses.create(
-            model=model,
-            input=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "input_file",
-                            "file_id": resume_file.id,
-                        },
-                        {
-                            "type": "input_text",
-                            "text": prompt_text,
-                        },
-                    ]
+    # Upload the resume file
+    resume_file = resume_files[0]
+    file_path = os.path.join(RESUME_FOLDER, resume_file)
+    uploaded_file = client.files.create(
+        file=open(file_path, "rb"),
+        purpose="user_data"
+    )
+
+    # Create input content with file
+    input_content = [{
+        "role": "user",
+        "content": [
+            {
+                "type": "input_file",
+                "file_id": uploaded_file.id,
+            },
+            {
+                "type": "input_text",
+                "text": """
+                This is my resume file. Act as a resume bot and answer next queries based on the information in this file.
+
+                Simply return '' if not found or unsure.
+                Rules:
+                - For each question, answer with the value from the provided information in the file.
+                - Important: For numeric answers provide as integer value.
+                - No extra text, explanations, or quotation marks; answer with the value only.
+                """
+            }
+        ]
+    }]
+
+    response = client.responses.create(
+        model=model,
+        input=input_content
+    )
+    user_detail_chat_id = response.id
+
+    # Save expanded run data with metadata
+    try:
+        run_data[key] = {
+            "chat_id": user_detail_chat_id,
+            "last_updated": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "provider": "OpenAI",
+            "files": {
+                "resume": {
+                    "file_path": file_path,
+                    "last_modified": datetime.datetime.fromtimestamp(
+                        os.path.getmtime(file_path), datetime.timezone.utc
+                    ).isoformat()
                 }
-            ]
-        )
-        user_detail_query_id = response.id
-        run_data[key] = user_detail_query_id
+            }
+        }
         with open(RUN_DATA_FILE, 'w') as f:
-            json.dump(run_data, f)
-    return user_detail_query_id
+            json.dump(run_data, f, indent=4)
+    except Exception as e:
+        print("Failed to write run data: {}".format(e))
+
+    return user_detail_chat_id
 
 def ask_openai(prompt: str, model: str = "gpt-4.1"):
     """

@@ -137,6 +137,7 @@ dist
 
 # User data
 user_data/
+my_data/
 keys/
 output/
 

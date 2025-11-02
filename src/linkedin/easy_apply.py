@@ -12,19 +12,19 @@ def apply_jobs_easy_apply(page, keyword, location):
     """Performs the Easy Apply process for a jobs on LinkedIn."""
     print("Starting the Easy Apply process...")
     # Create an output file to log the job applications
-    output_dir = "output/linkedin"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-    current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_file = os.path.join(output_dir, f"easy_apply_{current_time}.json")
-    json_file = JsonFile(output_file)
-    apply_info = {
-        "record":"Apply info",
-        "keyword": keyword,
-        "location": location,
-        "timestamp": datetime.now().isoformat()
-    }
-    json_file.append(apply_info)
+    # output_dir = "output/linkedin"
+    # if not os.path.exists(output_dir):
+    #     os.makedirs(output_dir)
+    # current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # output_file = os.path.join(output_dir, f"easy_apply_{current_time}.json")
+    # json_file = JsonFile(output_file)
+    # apply_info = {
+    #     "record":"Apply info",
+    #     "keyword": keyword,
+    #     "location": location,
+    #     "timestamp": datetime.now().isoformat()
+    # }
+    # json_file.append(apply_info)
 
     jobs = fetch_job_list(page, keyword, location)
 

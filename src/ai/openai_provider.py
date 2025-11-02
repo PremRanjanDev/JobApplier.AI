@@ -138,11 +138,16 @@ def save_prompt_cache():
 # Load cache at module import
 load_prompt_cache()
 
-def get_text_answer(question, model: str = "gpt-4.1"):
-    cache_key = f"text::{question.strip()}"
+def get_text_answer(question, validation=None, model: str = "gpt-4.1"):
+    validation=f"(Validation: {validation.strip()})" if validation else ""
+    cache_key = f"text::{question.strip()}{validation}"
     if cache_key in _prompt_cache:
         print("Cache hit for get_text_answer")
         return _prompt_cache[cache_key]
+    
+    if validation:
+        question = f"{question.strip()}{validation}"
+            
     print("Getting answer from OpenAI...")
     client = get_openai_client()
     user_detail_query_id = get_user_details_conv_id(model)

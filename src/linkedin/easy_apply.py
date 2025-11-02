@@ -5,8 +5,8 @@ import os
 from datetime import datetime
 import json
 
-control_wait_timeout = 5000 # 5 seconds timeout for waiting for controls
-control_click_timeout = 2000 # 2 seconds timeout for waiting for clicks
+timeout_5s = 5000 # 5 seconds timeout for waiting for controls
+timeout_2s = 2000 # 2 seconds timeout for waiting for clicks
 
 def apply_jobs_easy_apply(page, keyword, location):
     """Performs the Easy Apply process for a jobs on LinkedIn."""
@@ -101,8 +101,8 @@ def fetch_job_list(page, job_title, location, page_number=1):
     if page_number > 1:
         pagination_selector = f'button[aria-label="Page {page_number}"]'
         try:
-            page.wait_for_selector(pagination_selector, timeout=control_wait_timeout)
-            page.click(pagination_selector, timeout=control_click_timeout)
+            page.wait_for_selector(pagination_selector, timeout=timeout_5s)
+            page.click(pagination_selector, timeout=timeout_2s)
             page.wait_for_timeout(2000)  # Wait for the page to load jobs
         except Exception as e:
             print(f"Could not click pagination button for page {page_number}: {e}")
@@ -125,8 +125,11 @@ def fetch_job_list(page, job_title, location, page_number=1):
     return jobs
 
 def extract_form_fields(element):
-    """Extracts all input/select/radio/combobox fields and their current values from the Easy Apply modal,
-    and also retrieves the modal header text and progress percent (if present)."""
+    """Extracts input fields from the Easy Apply modal.
+    
+    Args:
+        element: The modal element to extract fields from
+    """
     return element.evaluate('''(modal) => {
 
         // Get header text
@@ -144,102 +147,143 @@ def extract_form_fields(element):
             progress = (progressElem.textContent || '').trim();
         }
 
+        const getFieldError = (element) => {
+            const errorId = element.getAttribute('aria-describedby');
+            if (errorId) {
+                const errorEl = modal.querySelector(`#${errorId} .artdeco-inline-feedback--error .artdeco-inline-feedback__message`);
+                if (errorEl) {
+                    return errorEl.textContent.trim();
+                }
+            }
+            
+            const container = element.closest('.fb-dash-form-element');
+            if (container) {
+                const errorEl = container.querySelector('.artdeco-inline-feedback--error .artdeco-inline-feedback__message');
+                if (errorEl) {
+                    return errorEl.textContent.trim();
+                }
+            }
+            return null;
+        };
+
         const fields = [];
-
-        // Combobox / autocomplete inputs (role="combobox")
-        modal.querySelectorAll('input[role="combobox"]').forEach(input => {
-            const listId = input.getAttribute('aria-controls') || input.getAttribute('aria-owns') || '';
-            let options = [];
-            if (listId) {
-                const listEl = modal.querySelector('#' + listId) || document.querySelector('#' + listId);
-                if (listEl) {
-                    options = Array.from(listEl.querySelectorAll('[role="option"], .basic-typeahead__selectable')).map((opt, idx) => {
-                        const textElem = opt.querySelector('.search-typeahead-v2__hit-text') || opt.querySelector('span') || opt;
-                        const txt = (textElem && textElem.textContent) ? textElem.textContent.trim() : (opt.textContent || '').trim();
-                        return {
-                            label: txt,
-                            selector: opt.id ? ('#' + opt.id) : null
-                        };
-                    });
-                }
-            }
-            fields.push({
-                type: 'combobox',
-                label: input.labels && input.labels[0] ? input.labels[0].querySelector('span[aria-hidden="true"]')?.textContent.trim() || input.labels[0].innerText.trim() : '',
-                selector: '#' + input.id,
-                value: input.value || '',
-                listbox: listId,
-                options: options
-            });
-        });
-
-        // Text inputs (exclude comboboxes handled above)
-        modal.querySelectorAll('input[type="text"]:not([role="combobox"]), input[type="email"], input[type="tel"]').forEach(input => {
-            fields.push({
-                type: 'text',
-                label: input.labels && input.labels[0] ? input.labels[0].querySelector('span[aria-hidden="true"]')?.textContent.trim() || input.labels[0].innerText.trim() : '',
-                selector: '#' + input.id,
-                value: input.value || ''
-            });
-        });
-
-        // Select dropdowns
-        modal.querySelectorAll('select').forEach(select => {
-            const options = Array.from(select.options).map((opt, idx) => ({
-                label: opt.textContent.trim(),
-                selector: '#' + select.id + ' > option:nth-child(' + (idx + 1) + ')',
-                value: opt.value,
-                isSelected: opt.selected
-            }));
-            const topOptions = options.length > 10 ? options.slice(0, 10) : options;
-            fields.push({
-                type: 'select',
-                label: select.labels && select.labels[0] ? select.labels[0].querySelector('span[aria-hidden="true"]')?.textContent.trim() || select.labels[0].innerText.trim() : '',
-                selector: '#' + select.id,
-                value: select.value,
-                options: topOptions
-            });
-        });
-
-        // Radio groups
-        modal.querySelectorAll('fieldset[data-test-form-builder-radio-button-form-component="true"]').forEach(fieldset => {
-            let label = '';
-            const legend = fieldset.querySelector('legend');
-            if (legend) {
-                const spanLabel = legend.querySelector('span[aria-hidden="true"]');
-                label = spanLabel ? spanLabel.textContent.trim() : legend.textContent.trim();
+        const formElements = modal.querySelectorAll('input, select, fieldset');
+        
+        formElements.forEach(element => {
+            if (element.type === 'hidden' || !element.offsetParent) {
+                return;
             }
 
-            const radioInputs = fieldset.querySelectorAll('input[type="radio"]');
-            const options = Array.from(radioInputs).map((input, idx) => {
-                let optionLabel = '';
-                const labelElem = fieldset.querySelector(`label[for="${input.id}"]`);
-                if (labelElem) {
-                    optionLabel = labelElem.textContent.trim();
-                } else if (input.nextElementSibling && input.nextElementSibling.tagName === 'LABEL') {
-                    optionLabel = input.nextElementSibling.textContent.trim();
-                } else {
-                    optionLabel = input.value || `Option ${idx + 1}`;
+            let fieldData = null;
+
+            // Handle combobox inputs
+            if (element.matches('input[role="combobox"]')) {
+                const listId = element.getAttribute('aria-controls') || element.getAttribute('aria-owns') || '';
+                let options = [];
+                if (listId) {
+                    const listEl = modal.querySelector('#' + listId) || document.querySelector('#' + listId);
+                    if (listEl) {
+                        options = Array.from(listEl.querySelectorAll('[role="option"], .basic-typeahead__selectable')).map((opt, idx) => {
+                            const textElem = opt.querySelector('.search-typeahead-v2__hit-text') || opt.querySelector('span') || opt;
+                            const txt = (textElem && textElem.textContent) ? textElem.textContent.trim() : (opt.textContent || '').trim();
+                            return {
+                                label: txt,
+                                selector: opt.id ? ('#' + opt.id) : null
+                            };
+                        });
+                    }
                 }
-                return {
-                    label: optionLabel,
-                    selector: '#' + input.id,
-                    value: input.value,
-                    isSelected: input.checked
+                fieldData = {
+                    type: 'combobox',
+                    label: element.labels?.[0]?.querySelector('span[aria-hidden="true"]')?.textContent.trim() || element.labels?.[0]?.innerText.trim() || '',
+                    selector: '#' + element.id,
+                    value: element.value || '',
+                    listbox: listId,
+                    options: options
                 };
-            });
+            }
+            // Text inputs (exclude comboboxes handled above)
+            else if (element.matches('input[type="text"]:not([role="combobox"]), input[type="email"], input[type="tel"]')) {
+                fieldData = {
+                    type: 'text',
+                    label: element.labels?.[0]?.querySelector('span[aria-hidden="true"]')?.textContent.trim() || element.labels?.[0]?.innerText.trim() || '',
+                    selector: '#' + element.id,
+                    value: element.value || ''
+                };
+            }
+            // Select dropdowns
+            else if (element.matches('select')) {
+                const options = Array.from(element.options).map((opt, idx) => ({
+                    label: opt.textContent.trim(),
+                    selector: '#' + element.id + ' > option:nth-child(' + (idx + 1) + ')',
+                    value: opt.value,
+                    isSelected: opt.selected
+                }));
+                const topOptions = options.length > 10 ? options.slice(0, 10) : options;
+                fieldData = {
+                    type: 'select',
+                    label: element.labels?.[0]?.querySelector('span[aria-hidden="true"]')?.textContent.trim() || element.labels?.[0]?.innerText.trim() || '',
+                    selector: '#' + element.id,
+                    value: element.value,
+                    options: topOptions
+                };
+            }
+            // Radio groups
+            else if (element.matches('fieldset[data-test-form-builder-radio-button-form-component="true"]')) {
+                let label = '';
+                const legend = element.querySelector('legend');
+                if (legend) {
+                    const spanLabel = legend.querySelector('span[aria-hidden="true"]');
+                    label = spanLabel ? spanLabel.textContent.trim() : legend.textContent.trim();
+                }
 
-            const selected = options.find(opt => opt.isSelected);
-            fields.push({
-                type: 'radio',
-                label: label,
-                selector: '#' + fieldset.id,
-                value: selected ? selected.value : '',
-                options: options
-            });
+                const radioInputs = element.querySelectorAll('input[type="radio"]');
+                const options = Array.from(radioInputs).map((input, idx) => {
+                    let optionLabel = '';
+                    const labelElem = element.querySelector(`label[for="${input.id}"]`);
+                    if (labelElem) {
+                        optionLabel = labelElem.textContent.trim();
+                    } else if (input.nextElementSibling && input.nextElementSibling.tagName === 'LABEL') {
+                        optionLabel = input.nextElementSibling.textContent.trim();
+                    } else {
+                        optionLabel = input.value || `Option ${idx + 1}`;
+                    }
+                    return {
+                        label: optionLabel,
+                        selector: '#' + input.id,
+                        value: input.value,
+                        isSelected: input.checked
+                    };
+                });
+
+                const selected = options.find(opt => opt.isSelected);
+                fieldData = {
+                    type: 'radio',
+                    label: label,
+                    selector: '#' + element.id,
+                    value: selected ? selected.value : '',
+                    options: options
+                };
+            }
+
+            if (fieldData) {
+                const errorMessage = getFieldError(element);
+                if (errorMessage) {
+                    fieldData.error = errorMessage;
+                    fieldData.hasError = true;
+                }
+                fields.push(fieldData);
+            }
         });
 
-        return { id: modal.id, header: headerText, progress: progress, fields: fields };
+        return { 
+            id: modal.id, 
+            header: headerText, 
+            progress: progress, 
+            fields: fields,
+            hasErrors: fields.some(f => f.hasError),
+            totalErrors: fields.filter(_ => _.hasError).length
+        };
     }''')
 
 def extract_step_controls(element):
@@ -296,19 +340,20 @@ def extract_step_controls(element):
         return controls;
     }''')
 
-def form_state(form_info, step_controls):
+def form_state(form_info):
     """Returns a hashable representation of the form's header and its fields/values."""
     return json.dumps({
         "id": form_info.get("id", ""),
         "header": form_info.get("header", ""),
-        "fields": [{f["label"]: f["value"]} for f in form_info.get("fields", [])],
-        "nextButton": step_controls.get("nextButton", None)
+        "progress": form_info.get("progress", ""),
+        "fields": [f'{field["label"]}:{field.get("error", "")}:{field["value"]}' for field in form_info.get("fields", [])],
     })
 
 def apply_job(page, job):
     """Applies to a job using the Easy Apply button, handling multi-step forms."""
     print("Applying to job...")
     try:
+        page.wait_for_timeout(timeout_2s)
         job_id = job.get_attribute('data-job-id')
         if not job_id:
             print("Job element does not have a data-job-id attribute.")
@@ -318,17 +363,17 @@ def apply_job(page, job):
         if not fresh_job:
             print(f"Could not find job element with selector: {job_selector}")
             return False
-        fresh_job.click(timeout=control_wait_timeout)
+        fresh_job.click(timeout=timeout_5s)
         fresh_job = page.query_selector(job_selector)
         if not fresh_job:
             print(f"Job element became detached before clicking: {job_selector}")
             return False
-        fresh_job.click(timeout=control_wait_timeout)
+        fresh_job.click(timeout=timeout_5s)
 
         print("Waiting for job details to load...")
         job_details_section = page.wait_for_selector(
             'div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"]',
-            timeout=control_wait_timeout
+            timeout=timeout_5s
         )
         easy_apply_button = None
         if job_details_section:
@@ -342,7 +387,6 @@ def apply_job(page, job):
             print("Already applied or Easy Apply button not found. Skipping this job.")
             return False, "Already applied"
         easy_apply_button.click()
-        page.wait_for_timeout(control_click_timeout)
 
         # Multi-step form loop
         previous_state = None
@@ -351,7 +395,7 @@ def apply_job(page, job):
             try:
                 application_form = page.wait_for_selector(
                     '[class*="easy-apply-modal"], [class^="artdeco-modal"]',
-                    timeout=control_wait_timeout
+                    timeout=timeout_5s
                 )
             except Exception:
                 # Modal disappeared before we could read it — assume finished
@@ -365,23 +409,28 @@ def apply_job(page, job):
             form_info = extract_form_fields(application_form)
             input_fields = form_info['fields']
             step_controls = extract_step_controls(application_form)
-            current_state = form_state(form_info, step_controls)
-
+            current_state = form_state(form_info)
+            has_errors = form_info.get('hasErrors', False)
             if previous_state == current_state:
                 print("Form state did not change after filling. Dismissing application.")
                 dismiss_job_apply(page, step_controls)
                 return False, "Form stuck, cannot proceed"
-
-            # Note: pass the form ElementHandle so field operations are scoped to the modal
-            fill_all_fields(page, input_fields)
+            
+            fill_all_fields(page, input_fields, has_errors)
             previous_state = current_state
 
             # Try to click next, submit or done, or dismiss if stuck
             if step_controls and step_controls['nextButton']:
-                page.wait_for_timeout(control_click_timeout)
+                page.wait_for_timeout(timeout_2s)
                 print("Clicking Next button... ", step_controls['nextButton']['label'])
-                page.click(step_controls['nextButton']['selector'], timeout=control_click_timeout)
-                page.wait_for_timeout(control_click_timeout)
+                next_button = page.query_selector(step_controls['nextButton']['selector'])
+                if next_button:
+                    page.evaluate('''(el) => {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }''', next_button)
+                    page.wait_for_timeout(1000)
+                    page.click(step_controls['nextButton']['selector'], timeout=timeout_2s)
+                    page.wait_for_timeout(timeout_2s)
             else:
                 print("No Next button found, dismissing application.")
                 dismiss_job_apply(page, step_controls)
@@ -397,26 +446,29 @@ def dismiss_job_apply(page, step_controls=None):
         step_controls = extract_step_controls(page)
     
     if step_controls and step_controls['closeButton']:
-        page.click(step_controls['closeButton']['selector'], timeout=control_click_timeout)
+        page.click(step_controls['closeButton']['selector'], timeout=timeout_2s)
         try:
             confirmation_modal = page.wait_for_selector(
                 '[role="alertdialog"], [class*="layer-confirmation"]',
-                timeout=control_wait_timeout
+                timeout=timeout_5s
             )
             if confirmation_modal:
                 confirmation_controls = extract_step_controls(confirmation_modal)
                 if confirmation_controls and confirmation_controls['discardButton']:
-                     page.click(confirmation_controls['discardButton']['selector'], timeout=control_click_timeout)
+                     page.click(confirmation_controls['discardButton']['selector'], timeout=timeout_2s)
                 elif confirmation_controls and confirmation_controls['closeButton']:
-                    page.click(confirmation_controls['closeButton']['selector'], timeout=control_click_timeout)
+                    page.click(confirmation_controls['closeButton']['selector'], timeout=timeout_2s)
         except Exception as e:
             print(f"Confirmation modal did not appear or could not discard: {e}")
     else:
         print("Could not find cancel button in step controls.") # Indicate failure
 
-def fill_all_fields(page, input_fields):
+def fill_all_fields(page, input_fields, has_errors=False):
     """Fills out all fields in the application form based on the provided input_fields.
     If form_element (ElementHandle) is provided, actions will try to scope inside it first."""
+    if has_errors:
+        print("Filling only error fields... ")
+        input_fields = [f for f in input_fields if f.get('hasError', False)]
     for input_field in input_fields:
         if input_field['type'] == 'text':
             enter_text_field(page, input_field)
@@ -430,46 +482,53 @@ def enter_text_field(page, input_field):
     print("Filling text field:", input_field['label'])
     selector = input_field['selector']
     current_value = input_field['value']
-    if not current_value:
-        new_value = get_text_answer(input_field['label'])
-        page.fill(selector, new_value)
+    error = input_field.get('error', None)
+    if error and not current_value:
+        print(f"Field has error '{error}' but no current value. Skipping...")
+        return
+    new_value = get_text_answer(input_field['label'], error)
+    if current_value != new_value:
+        page.fill(selector, '')
+        page.type(selector, new_value, delay=50)
+        page.wait_for_timeout(1000)
 
 def select_option(page, field_info):
     """Generically selects an option for dropdown or radio group based on the provided field_info."""
     print("Selecting option for field:", field_info['label'])
     selector = field_info['selector']
     options = field_info.get('options', [])
-    current_value = field_info['value']
     label = field_info.get('label', '')
+    current_value = field_info['value']
+    temp_options = [opt['label'] for opt in options if opt['label'].lower() != 'select an option']
+    answer = get_select_answer(label, temp_options)
 
-    if options and (not current_value or current_value in ['Select an option', '']):
-        temp_options = [opt['label'] for opt in options if opt['label'].lower() != 'select an option']
-        answer = get_select_answer(label, temp_options)
+    if current_value != answer:
         selected_option = next((opt for opt in options if opt['label'].strip().lower() == answer.strip().lower()), options[0])
         print(f"Selecting option '{selected_option['label']}' for field '{label}'")
         select_control(page, selected_option['selector'], selector, selected_option.get('value'))
-
+        page.wait_for_timeout(1000)
+        
 def select_control(page, option_selector, field_selector, option_value=None):
     """
     Tries to select a control by first using select_option (for dropdowns), then check (for radios/checkboxes), then click input, then click label.
     """
     if option_value is not None:
         try:
-            page.select_option(field_selector, option_value, timeout=control_click_timeout)
+            page.select_option(field_selector, option_value, timeout=timeout_2s)
             print(f"Select option used for {field_selector} with value {option_value}")
             return
         except Exception as e:
             print(f"Select option failed for {field_selector}: {e}")
     # Try check (for radio/checkbox)
     try:
-        page.check(option_selector, timeout=control_click_timeout)
+        page.check(option_selector, timeout=timeout_2s)
         print(f"Checked selector: {option_selector}")
         return
     except Exception as e:
         print(f"Check failed for {option_selector}: {e}")
     # Try clicking the input
     try:
-        page.click(option_selector, timeout=control_click_timeout)
+        page.click(option_selector, timeout=timeout_2s)
         print(f"Clicked selector: {option_selector}")
         return
     except Exception as e:
@@ -477,7 +536,7 @@ def select_control(page, option_selector, field_selector, option_value=None):
     # Try clicking the label associated with the input
     try:
         label_selector = f'label[for="{option_selector.lstrip("#")}"]'
-        page.click(label_selector, timeout=control_click_timeout)
+        page.click(label_selector, timeout=timeout_2s)
         print(f"Clicked label selector: {label_selector}")
         return
     except Exception as e:
@@ -491,14 +550,15 @@ def fill_combobox(page, field_info):
     current_value = field_info.get('value', '')
     new_value = get_text_answer(label)
 
-    if (current_value == new_value):
-        return
-
-    try:
-        page.fill(selector, new_value)
-        option_query = '[role="option"]' #, .basic-typeahead__selectable
-        page.wait_for_selector(option_query, timeout=control_wait_timeout)
-        candidates = page.query_selector_all(option_query)
-        candidates[0].click(timeout=control_click_timeout)
-    except Exception as e:
-        print(f"Failed to select combobox option for {label}: {e}")
+    if current_value != new_value:
+        try:
+            page.fill(selector, '')
+            page.type(selector, new_value, delay=50)
+            page.wait_for_timeout(timeout_2s)
+            option_query = '[role="option"]' #, .basic-typeahead__selectable
+            page.wait_for_selector(option_query, timeout=timeout_5s)
+            candidates = page.query_selector_all(option_query)
+            candidates[0].click(timeout=timeout_2s)
+            page.wait_for_timeout(1000)
+        except Exception as e:
+            print(f"Failed to select combobox option for {label}: {e}")

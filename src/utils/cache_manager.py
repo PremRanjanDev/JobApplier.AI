@@ -5,6 +5,7 @@ CACHE_FILE = 'sys_data/qnas_cache.json'
 _prompt_cache = {}
 
 def load_prompt_cache():
+    print("Loading prompt cache...")
     global _prompt_cache
     if os.path.exists(CACHE_FILE):
         try:

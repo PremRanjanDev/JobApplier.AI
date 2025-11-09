@@ -122,7 +122,7 @@ def ask_text_from_ai(question, validation=None, model: str = "gpt-4.1"):
         question = f"{question.strip()}{validation}"
     print("Getting answer from OpenAI...")
     client = get_openai_client()
-    user_detail_query_id = get_user_details_conv_id(model)
+    user_detail_query_id = get_user_detail_conv_id(model)
     response = client.responses.create(
         model=model,
         input=question,
@@ -134,7 +134,7 @@ def ask_select_from_ai(question, options, model: str = "gpt-4.1"):
     """Call OpenAI to choose an option."""
     print("Getting select answer from OpenAI...")
     client = get_openai_client()
-    user_detail_query_id = get_user_details_conv_id(model)
+    user_detail_query_id = get_user_detail_conv_id(model)
     response = client.responses.create(
         model=model,
         input=f"""Select an option for: {question} 
@@ -144,7 +144,7 @@ def ask_select_from_ai(question, options, model: str = "gpt-4.1"):
     )
     return response.output_text
 
-def get_user_details_conv_id(model: str):
+def get_user_detail_conv_id(model: str):
     try:
         with open(RUN_DATA_FILE, 'r') as f:
             run_data = json.load(f)
@@ -183,6 +183,7 @@ def get_user_details_conv_id(model: str):
                 return user_detail_chat.get("chat_id")
 
     # Either no stored entry or file changed -> create new conversation with new file
+    print("Uploading resume file and starting new user detail conversation with AI...")
     client = get_openai_client()
 
     with open(file_path, "rb") as fh:

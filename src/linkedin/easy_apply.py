@@ -3,6 +3,7 @@ from utils.qna_manager import get_text_answer, get_select_answer
 
 timeout_5s = 5000 # 5 seconds timeout for waiting for controls
 timeout_2s = 2000 # 2 seconds timeout for waiting for clicks
+timeout_1s = 1000 # 1 seconds timeout for waiting extra
 
 def apply_jobs_easy_apply(page, keyword, location):
     """Performs the Easy Apply process for a jobs on LinkedIn."""
@@ -59,102 +60,116 @@ def fetch_job_list(page, job_title, location, page_number=1):
     
     return jobs
 
+def click_job_card(page, job):
+    """Clicks on a job card and returns success status."""
+    job_id = job.get_attribute('data-job-id')
+    if not job_id:
+        print("Job element does not have a data-job-id attribute.")
+        return False
+    
+    job_selector = f'.job-card-container--clickable[data-job-id="{job_id}"]'
+    fresh_job = page.query_selector(job_selector)
+    if not fresh_job:
+        print(f"Could not find job element with selector: {job_selector}")
+        return False
+        
+    fresh_job.click(timeout=timeout_5s)
+    return True
+
+def find_and_click_easy_apply(page):
+    """Finds and clicks the Easy Apply button. Returns status and message."""
+    job_details_section = page.wait_for_selector(
+        'div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"]',
+        timeout=timeout_5s
+    )
+    
+    if not job_details_section:
+        return False, "Job details not found"
+
+    easy_apply_button = job_details_section.query_selector('button[aria-label^="Easy Apply"]')
+    if not easy_apply_button:
+        applied_message_elem = page.query_selector('.artdeco-inline-feedback--success .artdeco-inline-feedback__message')
+        if applied_message_elem:
+            return False, "Already applied"
+        return False, "Easy Apply button not found"
+    
+    easy_apply_button.click()
+    return True, "Success"
+
+def handle_application_form(page):
+    """Handles the multi-step application form. Returns application status and message."""
+    previous_state = None
+    
+    while True:
+        try:
+            application_form = page.wait_for_selector(
+                '[class*="easy-apply-modal"], [class^="artdeco-modal"]',
+                timeout=timeout_5s
+            )
+        except Exception:
+            return True, "Application finished"
+
+        if not application_form:
+            return False, "Application form not found"
+
+        status, message = process_form_step(page, application_form, previous_state)
+        if not status:
+            return False, message
+        page.wait_for_timeout(timeout_1s)
+        previous_state = message  # message contains the form state in this case
+
+def process_form_step(page, application_form, previous_state):
+    """Processes a single step of the application form."""
+    form_info = extract_form_fields(application_form)
+    print(f"Extracted form, header: {form_info['header']}, progress: {form_info['progress']}")
+    
+    current_state = form_state(form_info)
+    step_controls = extract_step_controls(application_form)
+    if previous_state == current_state:
+        print("Form state unchanged from previous step, likely stuck. Dismissing application.")
+        dismiss_job_apply(page, application_form, step_controls)
+        return False, "Form stuck"
+
+    fill_all_fields(page, form_info['fields'], form_info.get('hasErrors', False))
+    
+    if not step_controls or not step_controls['nextButton']:
+        print("No next button found in step controls. Dismissing application.")
+        dismiss_job_apply(page, application_form, step_controls)
+        return False, "No next button"
+
+    page.wait_for_timeout(timeout_2s)
+    next_button = page.query_selector(step_controls['nextButton']['selector'])
+    if next_button:
+        page.evaluate('el => el.scrollIntoView({ behavior: "smooth", block: "center" })', next_button)
+        page.wait_for_timeout(timeout_1s)
+        page.click(step_controls['nextButton']['selector'], timeout=timeout_2s)
+        page.wait_for_timeout(timeout_2s)
+        
+    return True, current_state
+
 def apply_job(page, job):
     """Applies to a job using the Easy Apply button, handling multi-step forms."""
-    print("Applying to job...")
     try:
-        job_id = job.get_attribute('data-job-id')
-        if not job_id:
-            print("Job element does not have a data-job-id attribute.")
-            return False
-        job_selector = f'.job-card-container--clickable[data-job-id="{job_id}"]'
-        fresh_job = page.query_selector(job_selector)
-        if not fresh_job:
-            print(f"Could not find job element with selector: {job_selector}")
-            return False
-        fresh_job.click(timeout=timeout_5s)
-        page.wait_for_timeout(timeout_2s)
-        fresh_job = page.query_selector(job_selector)
-        if not fresh_job:
-            print(f"Job element became detached before clicking: {job_selector}")
-            return False
-        fresh_job.click(timeout=timeout_5s)
-
-        print("Waiting for job details to load...")
-        job_details_section = page.wait_for_selector(
-            'div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"]',
-            timeout=timeout_5s
-        )
-        easy_apply_button = None
-        if job_details_section:
-            easy_apply_button = job_details_section.query_selector('button[aria-label^="Easy Apply"]')
-        if not easy_apply_button:
-            applied_message_elem = page.query_selector('.artdeco-inline-feedback--success .artdeco-inline-feedback__message')
-            if applied_message_elem:
-                applied_message = applied_message_elem.inner_text()
-                print(f"Already applied to this job. Status: {applied_message.strip()}")
-                return False, "Already applied"
-            print("Already applied or Easy Apply button not found. Skipping this job.")
-            return False, "Already applied"
-        easy_apply_button.click()
-
-        # Multi-step form loop
-        previous_state = None
-        while True:
-            print("Extracting application form DOM...")
-            try:
-                application_form = page.wait_for_selector(
-                    '[class*="easy-apply-modal"], [class^="artdeco-modal"]',
-                    timeout=timeout_5s
-                )
-            except Exception:
-                # Modal disappeared before we could read it — assume finished
-                print("Application modal not found (may have been closed). Assuming finished.")
-                return True, "Application finished"
-
-            if not application_form:
-                print("Could not find the application form modal. Skipping this job.")
-                return False, "Application form not found"
-
-            form_info = extract_form_fields(application_form)
-            print(f"Extracted form, header: {form_info['header']}, progress: {form_info['progress']}, total fields: {len(form_info['fields'])}, total errors: {form_info.get('totalErrors', 0)}")
-            input_fields = form_info['fields']
-            step_controls = extract_step_controls(application_form)
-            current_state = form_state(form_info)
-            has_errors = form_info.get('hasErrors', False)
-            if previous_state == current_state:
-                print("Form state did not change after filling. Dismissing application.")
-                dismiss_job_apply(page, step_controls)
-                return False, "Form stuck, cannot proceed"
-            
-            fill_all_fields(page, input_fields, has_errors)
-            previous_state = current_state
-
-            # Try to click next, submit or done, or dismiss if stuck
-            if step_controls and step_controls['nextButton']:
-                page.wait_for_timeout(timeout_2s)
-                print("Clicking Next button... ", step_controls['nextButton']['label'])
-                next_button = page.query_selector(step_controls['nextButton']['selector'])
-                if next_button:
-                    page.evaluate('''(el) => {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }''', next_button)
-                    page.wait_for_timeout(1000)
-                    page.click(step_controls['nextButton']['selector'], timeout=timeout_2s)
-                    page.wait_for_timeout(timeout_2s)
-            else:
-                print("No Next button found, dismissing application.")
-                dismiss_job_apply(page, step_controls)
-                return False, "No next button"
+        if not click_job_card(page, job):
+            return False, "Failed to click job card"
+        
+        page.wait_for_timeout(timeout_1s)
+        status, message = find_and_click_easy_apply(page)
+        if not status:
+            return False, message
+        
+        page.wait_for_timeout(timeout_1s)
+        return handle_application_form(page)
+        
     except Exception as e:
         print(f"Error applying to job {getattr(job, 'title', 'Unknown')}: {e}")
         dismiss_job_apply(page, None)
-        return
+        return False, str(e)
 
-def dismiss_job_apply(page, step_controls=None):
+def dismiss_job_apply(page, application_form, step_controls=None):
     print("Could not find next button in step controls.")
     if not step_controls:
-        step_controls = extract_step_controls(page)
+        step_controls = extract_step_controls(application_form)
     
     if step_controls and step_controls['closeButton']:
         page.click(step_controls['closeButton']['selector'], timeout=timeout_2s)
@@ -203,7 +218,7 @@ def enter_text_field(page, input_field):
             page.fill(selector, '')
             page.wait_for_timeout(200)
         page.type(selector, new_value, delay=50)
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(timeout_1s)
 
 def select_option(page, field_info):
     """Generically selects an option for dropdown or radio group based on the provided field_info."""
@@ -219,7 +234,7 @@ def select_option(page, field_info):
         selected_option = next((opt for opt in options if opt['label'].strip().lower() == answer.strip().lower()), options[0])
         print(f"Selecting option '{selected_option['label']}' for field '{label}'")
         select_control(page, selected_option['selector'], selector, selected_option.get('value'))
-        page.wait_for_timeout(1000)
+        page.wait_for_timeout(timeout_1s)
         
 def select_control(page, option_selector, field_selector, option_value=None):
     """

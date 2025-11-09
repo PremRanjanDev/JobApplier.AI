@@ -11,103 +11,42 @@ timeout_2s = 2000 # 2 seconds timeout for waiting for clicks
 def apply_jobs_easy_apply(page, keyword, location):
     """Performs the Easy Apply process for a jobs on LinkedIn."""
     print("Starting the Easy Apply process...")
-    # Create an output file to log the job applications
-    # output_dir = "output/linkedin"
-    # if not os.path.exists(output_dir):
-    #     os.makedirs(output_dir)
-    # current_time = datetime.now().strftime("%Y%m%d_%H%M%S")
-    # output_file = os.path.join(output_dir, f"easy_apply_{current_time}.json")
-    # json_file = JsonFile(output_file)
-    # apply_info = {
-    #     "record":"Apply info",
-    #     "keyword": keyword,
-    #     "location": location,
-    #     "timestamp": datetime.now().isoformat()
-    # }
-    # json_file.append(apply_info)
+    page_number = 1
+    while True:
+        print(f"Fetching job listings, page {page_number}...")
+        jobs = fetch_job_list(page, keyword, location, page_number)
+        if not jobs:
+            print("No more job listings found. Ending process.")
+            break
+        print(f"Processing {len(jobs)} jobs on page {page_number}...")
+        for job in jobs:
+            print("Processing job...")
+            job_id = job.get_attribute('data-job-id')
+            print(f"Job ID: {job_id}")
 
-    jobs = fetch_job_list(page, keyword, location)
-
-    if not jobs:
-        print("No job listings found. Please check the job title and location.")
-        return
-    print(f"Found {len(jobs)} job listings.")
-
-    for job in jobs:
-        # Parse the job element using AI and fetch details like id, title, company, location, type, etc.
-        print("Processing job...")
-        job_id = job.get_attribute('data-job-id')
-        print(f"Job ID: {job_id}")
-        # job_card_element_html = job.inner_html()
-        # print("Extracting job info from HTML...")
-        # job_info = read_job_info_by_ai(job_card_element_html)
-        # print("AI returned the following job details:")
-        # print(f"job_info: {job_info}")
-        # if "selector" in job_info and job_info["selector"]:
-        #     try:
-        #         page.click(job_info["selector"], timeout=wait_for_control)
-        #         print(f"Clicked element with selector: {job_info['selector']}")
-        #     except Exception as e:
-        #         print(f"Failed to click element with selector {job_info['selector']}: {e}")
-        # # Add additional info like datetime and append to the JSON file
-        # job_info["record"] = "Job Info"
-        # job_info["processed_at"] = datetime.now().isoformat()
-        # json_file.append(job_info)
-# 
-        # if job_info.get('applied', False):
-        #     print("Job already applied or Easy Apply button not found. Skipping this job.")
-        #     continue
-        # 
-        # print(f"Processing job: {job_info.get('title', 'N/A')} at {job_info.get('company', 'N/A')} in {job_info.get('location', 'N/A')}")
-        
-        applied = apply_job(page, job)
-        if applied:
-            print("Successfully applied.")
-        else:
-            print("Failed to apply.")
-
-    # Example: Fill the form based on OpenAI's response
-    # for field in fields_info:
-    #     selector = field.get('selector')
-    #     field_type = field.get('type')
-    #     label = field.get('label')
-    #     options = field.get('options', [])
-    #     value = field.get('value', '')  # You may want to generate or fetch this value
-    #     print(f"Filling {label} ({field_type}) with value: {value}")
-    #     if field_type == 'text':
-    #         page.fill(selector, value)
-    #     elif field_type == 'radio':
-    #         # Select the first option or a preferred one
-    #         if options:
-    #             page.check(options[0]['selector'])
-    #     elif field_type == 'checkbox':
-    #         # Check if value is True or similar logic
-    #         if value:
-    #             page.check(selector)
-    #     # Add more field types as needed
-
-    # # Submit the application
-    # print("Submitting application...")
-    # page.click('button[aria-label="Submit application"]', timeout=wait_for_control)
-    
-    # print("Application submitted successfully.")
+            applied, status = apply_job(page, job)
+            if applied:
+                print("Successfully applied.")
+            else:
+                print(f"Failed to apply. Status: {status}")
+        page_number += 1
 
 def fetch_job_list(page, job_title, location, page_number=1):
     """Fetches job listings from LinkedIn based on job title and location."""
     print(f"Searching for jobs: {job_title} in {location}")
     page.goto(f"https://www.linkedin.com/jobs/search/?keywords={job_title}&location={location}&f_AL=true")
     
-    print("Current page number:", page_number)
+    print("Requested page number:", page_number)
     if page_number > 1:
         pagination_selector = f'button[aria-label="Page {page_number}"]'
         try:
             page.wait_for_selector(pagination_selector, timeout=timeout_5s)
             page.click(pagination_selector, timeout=timeout_2s)
-            page.wait_for_timeout(2000)  # Wait for the page to load jobs
         except Exception as e:
             print(f"Could not click pagination button for page {page_number}: {e}")
-
-    page.wait_for_timeout(2000) # Wait for the page to load jobs
+            return []
+    
+    page.wait_for_timeout(timeout_2s)
     jobs = page.query_selector_all('.job-card-container--clickable')
 
     prev_job_len = 0
@@ -119,7 +58,7 @@ def fetch_job_list(page, job_title, location, page_number=1):
             '(el) => el.scrollIntoView({behavior: "smooth", block: "start"})',
             jobs[-1]
         )
-        page.wait_for_timeout(1000)  # Wait for more jobs to load
+        page.wait_for_timeout(800)  # Wait for more jobs to load
         jobs = page.query_selector_all('.job-card-container--clickable')
     
     return jobs
@@ -353,7 +292,6 @@ def apply_job(page, job):
     """Applies to a job using the Easy Apply button, handling multi-step forms."""
     print("Applying to job...")
     try:
-        page.wait_for_timeout(timeout_2s)
         job_id = job.get_attribute('data-job-id')
         if not job_id:
             print("Job element does not have a data-job-id attribute.")
@@ -364,6 +302,7 @@ def apply_job(page, job):
             print(f"Could not find job element with selector: {job_selector}")
             return False
         fresh_job.click(timeout=timeout_5s)
+        page.wait_for_timeout(timeout_2s)
         fresh_job = page.query_selector(job_selector)
         if not fresh_job:
             print(f"Job element became detached before clicking: {job_selector}")
@@ -407,6 +346,7 @@ def apply_job(page, job):
                 return False, "Application form not found"
 
             form_info = extract_form_fields(application_form)
+            print(f"Extracted form, header: {form_info['header']}, progress: {form_info['progress']}, total fields: {len(form_info['fields'])}, total errors: {form_info.get('totalErrors', 0)}")
             input_fields = form_info['fields']
             step_controls = extract_step_controls(application_form)
             current_state = form_state(form_info)
@@ -487,8 +427,10 @@ def enter_text_field(page, input_field):
         print(f"Field has error '{error}' but no current value. Skipping...")
         return
     new_value = get_text_answer(input_field['label'], error)
-    if current_value != new_value:
-        page.fill(selector, '')
+    if new_value and new_value != current_value:
+        if current_value:
+            page.fill(selector, '')
+            page.wait_for_timeout(200)
         page.type(selector, new_value, delay=50)
         page.wait_for_timeout(1000)
 

@@ -5,9 +5,10 @@ import datetime
 
 # Constants for file paths
 OPENAI_KEY_FILE = 'keys/openai-key.txt'
-RUN_DATA_FILE = 'my_data/run_data.json'
+RUN_DATA_FILE = 'sys_data/run_data.json'
+CACHE_FILE = 'sys_data/qnas_cache.json'
 RESUME_FOLDER = 'my_data/resume'
-CACHE_FILE = 'my_data/qnas_cache.json'
+OTHER_INFO_FILE = 'my_data/other_info.txt'
 
 tools = [
     {
@@ -189,35 +190,45 @@ def get_user_details_conv_id(model: str):
         run_data = {}
 
     key = 'user_detail_chat'
-    user_detail = run_data.get(key)
-    if user_detail and isinstance(user_detail, dict):
-        return user_detail.get("chat_id")
+    user_detail_chat = run_data.get(key)
 
-    client = get_openai_client()
-    
-    # Check if resume folder exists
+    # Locate resume file (validate single file) upfront so we can compare
     if not os.path.exists(RESUME_FOLDER):
-        raise RuntimeError(f"Resume folder not found: {RESUME_FOLDER}")
-        
-    # Get all files in resume folder
-    resume_files = [f for f in os.listdir(RESUME_FOLDER) 
-                   if os.path.isfile(os.path.join(RESUME_FOLDER, f))]
-    
-    # Validate single resume file
+        raise RuntimeError("Resume folder not found: {}".format(RESUME_FOLDER))
+
+    resume_files = [fn for fn in os.listdir(RESUME_FOLDER)
+                    if os.path.isfile(os.path.join(RESUME_FOLDER, fn))]
+
     if not resume_files:
-        raise RuntimeError(f"No resume file found in folder: {RESUME_FOLDER}")
+        raise RuntimeError("No resume file found in folder: {}".format(RESUME_FOLDER))
     if len(resume_files) > 1:
         raise RuntimeError("Multiple files found in resume folder. Expected single file.")
 
-    # Upload the resume file
     resume_file = resume_files[0]
     file_path = os.path.join(RESUME_FOLDER, resume_file)
-    uploaded_file = client.files.create(
-        file=open(file_path, "rb"),
-        purpose="user_data"
-    )
+    current_last_modified = datetime.datetime.fromtimestamp(
+        os.path.getmtime(file_path), datetime.timezone.utc
+    ).isoformat()
 
-    # Create input content with file
+    # If we have stored metadata, check if file name or last_modified changed
+    if user_detail_chat and isinstance(user_detail_chat, dict):
+        stored_files = user_detail_chat.get("files", {})
+        resume_meta = stored_files.get("resume") if isinstance(stored_files, dict) else None
+        if resume_meta and isinstance(resume_meta, dict):
+            stored_path = resume_meta.get("file_path")
+            stored_last_modified = resume_meta.get("last_modified")
+            if stored_path == file_path and stored_last_modified == current_last_modified:
+                return user_detail_chat.get("chat_id")
+
+    # Either no stored entry or file changed -> create new conversation with new file
+    client = get_openai_client()
+
+    with open(file_path, "rb") as fh:
+        uploaded_file = client.files.create(
+            file=fh,
+            purpose="user_data"
+        )
+
     input_content = [{
         "role": "user",
         "content": [
@@ -227,15 +238,14 @@ def get_user_details_conv_id(model: str):
             },
             {
                 "type": "input_text",
-                "text": """
-                This is my resume file. Act as a resume bot and answer next queries based on the information in this file.
-
-                Simply return '' if not found or unsure.
-                Rules:
-                - For each question, answer with the value from the provided information in the file.
-                - Important: For numeric answers provide as integer value.
-                - No extra text, explanations, or quotation marks; answer with the value only.
-                """
+                "text": (
+                    "This is my resume file. Act as a resume bot and answer next queries based on the information in this file.\n\n"
+                    "Simply return '' if not found or unsure.\n"
+                    "Rules:\n"
+                    "- For each question, answer with the value from the provided information in the file.\n"
+                    "- Important: For numeric answers provide as integer value.\n"
+                    "- No extra text, explanations, or quotation marks; answer with the value only."
+                )
             }
         ]
     }]
@@ -255,9 +265,7 @@ def get_user_details_conv_id(model: str):
             "files": {
                 "resume": {
                     "file_path": file_path,
-                    "last_modified": datetime.datetime.fromtimestamp(
-                        os.path.getmtime(file_path), datetime.timezone.utc
-                    ).isoformat()
+                    "last_modified": current_last_modified
                 }
             }
         }

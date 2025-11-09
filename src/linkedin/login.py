@@ -1,7 +1,7 @@
 import os
 import pathlib
 
-LINKEDIN_STATE_FILE = "my_data/login/linkedin_state.json"
+LINKEDIN_STATE_FILE = "sys_data/login/linkedin_state.json"
 
 def login(browser, save_login=False):
     """Logs in to LinkedIn using the provided browser object.

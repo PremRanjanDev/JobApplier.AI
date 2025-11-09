@@ -138,6 +138,7 @@ dist
 # User data
 user_data/
 my_data/
+sys_data/
 keys/
 output/
 

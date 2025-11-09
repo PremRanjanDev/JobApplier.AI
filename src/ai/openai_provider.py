@@ -2,7 +2,6 @@ from openai import OpenAI
 import json
 import os
 import datetime
-from .cache_manager import save_prompt_cache, _prompt_cache
 
 # Constants for file paths
 OPENAI_KEY_FILE = 'keys/openai-key.txt'
@@ -115,17 +114,12 @@ def start_conversation(instruction, model: str = "gpt-4.1"):
     )
     return response.id
 
-def get_text_answer(question, validation=None, model: str = "gpt-4.1"):
-    validation=f"(Validation: {validation.strip()})" if validation else ""
-    cache_key = f"text::{question.strip()}{validation}"
-    if cache_key in _prompt_cache:
-        answer = _prompt_cache[cache_key]
-        print("Cache hit for get_text_answer: ", answer)
-        return answer
-
+def ask_text_from_ai(question, validation=None, model: str = "gpt-4.1"):
+    """Call OpenAI and return text answer."""
+    # preserve validation only in the prompt sent to AI as before
+    validation = f"(Validation: {validation.strip()})" if validation else ""
     if validation:
         question = f"{question.strip()}{validation}"
-            
     print("Getting answer from OpenAI...")
     client = get_openai_client()
     user_detail_query_id = get_user_details_conv_id(model)
@@ -134,17 +128,10 @@ def get_text_answer(question, validation=None, model: str = "gpt-4.1"):
         input=question,
         previous_response_id=user_detail_query_id
     )
-    answer = response.output_text
-    _prompt_cache[cache_key] = answer
-    save_prompt_cache()
-    return answer
+    return response.output_text
 
-def get_select_answer(question, options, model: str = "gpt-4.1"):
-    cache_key = f"select::{question.strip()}::{str(options)}"
-    if cache_key in _prompt_cache:
-        answer = _prompt_cache[cache_key]
-        print("Cache hit for get_select_answer: ", answer)
-        return answer
+def ask_select_from_ai(question, options, model: str = "gpt-4.1"):
+    """Call OpenAI to choose an option."""
     print("Getting select answer from OpenAI...")
     client = get_openai_client()
     user_detail_query_id = get_user_details_conv_id(model)
@@ -155,10 +142,7 @@ def get_select_answer(question, options, model: str = "gpt-4.1"):
                 {options} """,
         previous_response_id=user_detail_query_id,
     )
-    answer = response.output_text
-    _prompt_cache[cache_key] = answer
-    save_prompt_cache()
-    return answer
+    return response.output_text
 
 def get_user_details_conv_id(model: str):
     try:

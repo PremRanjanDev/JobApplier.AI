@@ -16,13 +16,19 @@ def load_prompt_cache():
 
 def save_prompt_cache():
     try:
-        # Sort keys with "" value on top
         sorted_items = sorted(_prompt_cache.items(), key=lambda x: x[1] != "")
         sorted_cache = dict(sorted_items)
         with open(CACHE_FILE, 'w') as f:
             json.dump(sorted_cache, f, indent=4)
     except Exception as e:
         print(f"Failed to save prompt cache: {e}")
+
+def get_from_cache(key, default=None):
+    return _prompt_cache.get(key, default)
+
+def set_to_cache(key, value):
+    _prompt_cache[key] = value
+    save_prompt_cache()
 
 # Load cache at module import
 load_prompt_cache()

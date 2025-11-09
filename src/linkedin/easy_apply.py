@@ -1,5 +1,5 @@
 from ai.ai_helper import read_job_info_by_ai, read_job_form_by_ai
-from ai.openai_provider import get_text_answer, get_select_answer
+from utils.qna_manager import get_text_answer, get_select_answer
 from utils.json_utils import JsonFile
 import os
 from datetime import datetime

@@ -2,6 +2,7 @@ from openai import OpenAI
 import json
 import os
 import datetime
+from .cache_manager import save_prompt_cache, _prompt_cache
 
 # Constants for file paths
 OPENAI_KEY_FILE = 'keys/openai-key.txt'
@@ -114,38 +115,14 @@ def start_conversation(instruction, model: str = "gpt-4.1"):
     )
     return response.id
 
-_prompt_cache = {}
-
-def load_prompt_cache():
-    global _prompt_cache
-    if os.path.exists(CACHE_FILE):
-        try:
-            with open(CACHE_FILE, 'r') as f:
-                _prompt_cache = json.load(f)
-        except Exception as e:
-            print(f"Failed to load prompt cache: {e}")
-            _prompt_cache = {}
-
-def save_prompt_cache():
-    try:
-        # Sort keys with "" value on top
-        sorted_items = sorted(_prompt_cache.items(), key=lambda x: x[1] != "")
-        sorted_cache = dict(sorted_items)
-        with open(CACHE_FILE, 'w') as f:
-            json.dump(sorted_cache, f, indent=4)
-    except Exception as e:
-        print(f"Failed to save prompt cache: {e}")
-
-# Load cache at module import
-load_prompt_cache()
-
 def get_text_answer(question, validation=None, model: str = "gpt-4.1"):
     validation=f"(Validation: {validation.strip()})" if validation else ""
     cache_key = f"text::{question.strip()}{validation}"
     if cache_key in _prompt_cache:
-        print("Cache hit for get_text_answer")
-        return _prompt_cache[cache_key]
-    
+        answer = _prompt_cache[cache_key]
+        print("Cache hit for get_text_answer: ", answer)
+        return answer
+
     if validation:
         question = f"{question.strip()}{validation}"
             
@@ -165,8 +142,9 @@ def get_text_answer(question, validation=None, model: str = "gpt-4.1"):
 def get_select_answer(question, options, model: str = "gpt-4.1"):
     cache_key = f"select::{question.strip()}::{str(options)}"
     if cache_key in _prompt_cache:
-        print("Cache hit for get_select_answer")
-        return _prompt_cache[cache_key]
+        answer = _prompt_cache[cache_key]
+        print("Cache hit for get_select_answer: ", answer)
+        return answer
     print("Getting select answer from OpenAI...")
     client = get_openai_client()
     user_detail_query_id = get_user_details_conv_id(model)

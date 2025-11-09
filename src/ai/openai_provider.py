@@ -144,53 +144,73 @@ def ask_select_from_ai(question, options, model: str = "gpt-4.1"):
     )
     return response.output_text
 
-def get_user_detail_conv_id(model: str):
+def _load_run_data():
     try:
         with open(RUN_DATA_FILE, 'r') as f:
-            run_data = json.load(f)
+            return json.load(f)
     except FileNotFoundError:
-        run_data = {}
+        return {}
+    except Exception as e:
+        print(f"Failed to load run data: {e}")
+        return {}
 
-    key = 'user_detail_chat'
-    user_detail_chat = run_data.get(key)
-
-    # Locate resume file (validate single file) upfront so we can compare
+def _get_resume_file():
     if not os.path.exists(RESUME_FOLDER):
-        raise RuntimeError("Resume folder not found: {}".format(RESUME_FOLDER))
+        raise RuntimeError(f"Resume folder not found: {RESUME_FOLDER}")
 
     resume_files = [fn for fn in os.listdir(RESUME_FOLDER)
                     if os.path.isfile(os.path.join(RESUME_FOLDER, fn))]
 
     if not resume_files:
-        raise RuntimeError("No resume file found in folder: {}".format(RESUME_FOLDER))
+        raise RuntimeError(f"No resume file found in folder: {RESUME_FOLDER}")
     if len(resume_files) > 1:
         raise RuntimeError("Multiple files found in resume folder. Expected single file.")
 
-    resume_file = resume_files[0]
-    file_path = os.path.join(RESUME_FOLDER, resume_file)
-    current_last_modified = datetime.datetime.fromtimestamp(
+    return os.path.join(RESUME_FOLDER, resume_files[0])
+
+def _last_modified_iso(file_path):
+    return datetime.datetime.fromtimestamp(
         os.path.getmtime(file_path), datetime.timezone.utc
     ).isoformat()
 
-    # If we have stored metadata, check if file name or last_modified changed
-    if user_detail_chat and isinstance(user_detail_chat, dict):
-        stored_files = user_detail_chat.get("files", {})
-        resume_meta = stored_files.get("resume") if isinstance(stored_files, dict) else None
-        if resume_meta and isinstance(resume_meta, dict):
-            stored_path = resume_meta.get("file_path")
-            stored_last_modified = resume_meta.get("last_modified")
-            if stored_path == file_path and stored_last_modified == current_last_modified:
-                return user_detail_chat.get("chat_id")
+def _cached_chat_valid(run_data, key, file_path, current_last_modified):
+    user_detail_chat = run_data.get(key)
+    if not user_detail_chat or not isinstance(user_detail_chat, dict):
+        return None
 
-    # Either no stored entry or file changed -> create new conversation with new file
-    print("Uploading resume file and starting new user detail conversation with AI...")
-    client = get_openai_client()
+    uploaded_files = user_detail_chat.get("files", {})
+    resume_meta = uploaded_files.get("resume") if isinstance(uploaded_files, dict) else None
+    if not resume_meta or not isinstance(resume_meta, dict):
+        return None
 
+    uploaded_file_path = resume_meta.get("file_path")
+    last_modified = resume_meta.get("last_modified")
+    if uploaded_file_path == file_path and last_modified == current_last_modified:
+        return user_detail_chat.get("chat_id")
+    return None
+
+def _save_run_data_chat(key, chat_id, file_path, last_modified):
+    try:
+        run_data = _load_run_data()
+        run_data[key] = {
+            "chat_id": chat_id,
+            "last_updated": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "provider": "OpenAI",
+            "files": {
+                "resume": {
+                    "file_path": file_path,
+                    "last_modified": last_modified
+                }
+            }
+        }
+        with open(RUN_DATA_FILE, 'w') as f:
+            json.dump(run_data, f, indent=4)
+    except Exception as e:
+        print(f"Failed to write run data: {e}")
+
+def _upload_resume_and_start_chat(client, file_path, model):
     with open(file_path, "rb") as fh:
-        uploaded_file = client.files.create(
-            file=fh,
-            purpose="user_data"
-        )
+        uploaded_file = client.files.create(file=fh, purpose="user_data")
 
     input_content = [{
         "role": "user",
@@ -217,26 +237,33 @@ def get_user_detail_conv_id(model: str):
         model=model,
         input=input_content
     )
-    user_detail_chat_id = response.id
+    return response.id
 
-    # Save expanded run data with metadata
+def get_user_detail_conv_id(model: str):
+    """
+    Return an existing user-detail conversation id if resume file metadata matches,
+    otherwise upload resume and start a new conversation, persisting metadata.
+    """
+    run_data = _load_run_data()
+    key = 'user_detail_chat'
+
     try:
-        run_data[key] = {
-            "chat_id": user_detail_chat_id,
-            "last_updated": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "provider": "OpenAI",
-            "files": {
-                "resume": {
-                    "file_path": file_path,
-                    "last_modified": current_last_modified
-                }
-            }
-        }
-        with open(RUN_DATA_FILE, 'w') as f:
-            json.dump(run_data, f, indent=4)
+        file_path = _get_resume_file()
     except Exception as e:
-        print("Failed to write run data: {}".format(e))
+        raise RuntimeError(str(e))
 
+    current_last_modified = _last_modified_iso(file_path)
+
+    cached_chat_id = _cached_chat_valid(run_data, key, file_path, current_last_modified)
+    if cached_chat_id:
+        return cached_chat_id
+
+    # Not cached or file changed -> create new conversation with file
+    print("Uploading resume file and starting new user detail conversation with AI...")
+    client = get_openai_client()
+    user_detail_chat_id = _upload_resume_and_start_chat(client, file_path, model)
+
+    _save_run_data_chat(key, user_detail_chat_id, file_path, current_last_modified)
     return user_detail_chat_id
 
 def ask_openai(prompt: str, model: str = "gpt-4.1"):

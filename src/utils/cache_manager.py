@@ -36,6 +36,12 @@ def remove_from_cache(key):
         del _prompt_cache[key]
         save_prompt_cache()
 
+def remove_by_ques_from_cache(ques):
+    for key in list(_prompt_cache.keys()):
+        if key.split("::")[1] == ques:
+            del _prompt_cache[key]
+    save_prompt_cache()
+
 def get_full_cache():
     return _prompt_cache
 

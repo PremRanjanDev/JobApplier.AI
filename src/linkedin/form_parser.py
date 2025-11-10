@@ -43,7 +43,7 @@ def extract_form_fields(element):
         };
 
         const fields = [];
-        const formElements = modal.querySelectorAll('input, select, fieldset');
+        const formElements = modal.querySelectorAll('input, select, fieldset, textarea');
         
         formElements.forEach(element => {
             if (element.type === 'hidden' || !element.offsetParent) {
@@ -79,7 +79,7 @@ def extract_form_fields(element):
                 };
             }
             // Text inputs (exclude comboboxes handled above)
-            else if (element.matches('input[type="text"]:not([role="combobox"]), input[type="email"], input[type="tel"]')) {
+            else if (element.matches('input[type="text"]:not([role="combobox"]), input[type="email"], input[type="tel"], textarea')) {
                 fieldData = {
                     type: 'text',
                     label: element.labels?.[0]?.querySelector('span[aria-hidden="true"]')?.textContent.trim() || element.labels?.[0]?.innerText.trim() || '',

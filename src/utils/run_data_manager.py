@@ -25,32 +25,16 @@ def update_run_data_udc(user_detail_chat_id, prop_key: str, value: dict):
     """
     print("Updating run data for user detail chat...")
     try:
-        run_data = _load_run_data()
-        udc = run_data.setdefault("user_detail_chat", {})
+        udc = _run_data.setdefault("user_detail_chat", {})
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         udc["chat_id"] = user_detail_chat_id
         udc["last_updated"] = now_iso
         udc[prop_key] = value
         
         with open(RUN_DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(run_data, f, indent=4)
+            json.dump(_run_data, f, indent=4)
     except Exception as e:
         print(f"Failed to write run data: {e}")
-
-
-def get_resume_file():
-    if not os.path.exists(RESUME_FOLDER):
-        raise RuntimeError(f"Resume folder not found: {RESUME_FOLDER}")
-
-    resume_files = [fn for fn in os.listdir(RESUME_FOLDER)
-                    if os.path.isfile(os.path.join(RESUME_FOLDER, fn))]
-
-    if not resume_files:
-        raise RuntimeError(f"No resume file found in folder: {RESUME_FOLDER}")
-    if len(resume_files) > 1:
-        raise RuntimeError("Multiple files found in resume folder. Expected single file.")
-
-    return os.path.join(RESUME_FOLDER, resume_files[0])
 
 
 _load_run_data()

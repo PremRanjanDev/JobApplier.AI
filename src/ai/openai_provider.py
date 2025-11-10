@@ -1,11 +1,12 @@
 from openai import OpenAI
 import json
-from utils.run_data_manager import get_run_data, update_run_data_udc, get_resume_file
-from utils.txt_utils import append_txt_records, get_changed_other_info, is_new_resume
+from utils.run_data_manager import get_run_data, update_run_data_udc
+from utils.user_data_manager import get_changed_other_info, is_new_resume, get_resume_file
+from utils.txt_utils import append_txt_records
 from utils.common_utils import last_modified_iso
-from utils.constants import OPENAI_KEY_FILE, OTHER_INFO_TRAINED_FILE
+from utils.constants import OPENAI_KEY_FILE, OTHER_INFO_TRAINED_FILE, OTHER_INFO_FILE
 
-user_detail_chat_id = None
+_user_detail_chat_id = None
 
 tools = [
     {
@@ -122,7 +123,7 @@ def ask_text_from_ai(question, validation=None, model: str = "gpt-4.1"):
     response = client.responses.create(
         model=model,
         input=question,
-        previous_response_id=user_detail_chat_id
+        previous_response_id=_user_detail_chat_id
     )
     return response.output_text
 
@@ -135,7 +136,7 @@ def ask_select_from_ai(question, options, model: str = "gpt-4.1"):
         input=f"""Select an option for: {question} 
                 Out of these options: 
                 {options} """,
-        previous_response_id=user_detail_chat_id,
+        previous_response_id=_user_detail_chat_id,
     )
     return response.output_text
 
@@ -186,10 +187,8 @@ def send_other_info_to_chat(user_detail_chat_id, qnas_dict, model: str = "gpt-4.
         print("No user_detail_chat_id or no qnas to send.")
         return None
     qnas = [f"{k}: {v}" for k, v in qnas_dict.items()]
-    lines = ["Here are some updated details:"]
-    for qna in qnas:
-        lines.append(f"- {qna}")
-    payload = "\n".join(lines)
+    prompt = "Here are some updated details, please update your information accordingly and respond based on updated data for future questions."
+    payload = f"{prompt}\n" + "\n - ".join(qnas)
     try:
         client = get_openai_client()
         response = client.responses.create(
@@ -204,7 +203,7 @@ def send_other_info_to_chat(user_detail_chat_id, qnas_dict, model: str = "gpt-4.
                 }
         append_txt_records(OTHER_INFO_TRAINED_FILE, qnas)
         update_run_data_udc(user_detail_chat_id, "other_info", other_info)
-        
+        print("AI Context updated with other_info:\n", qnas)
         return response.id
     except Exception as e:
         print(f"Failed to send other_info to chat: {e}")
@@ -242,7 +241,7 @@ def _get_user_detail_conv_id(model: str = "gpt-4.1"):
     changed_qnas = get_changed_other_info(user_detail_chat)
     if changed_qnas:
         print("Sending other_info updates to conversation...")
-        send_other_info_to_chat(user_detail_chat_id, changed_qnas)
+        user_detail_chat_id = send_other_info_to_chat(user_detail_chat_id, changed_qnas)
 
     return user_detail_chat_id
 
@@ -260,8 +259,8 @@ def ask_openai(prompt: str, model: str = "gpt-4.1"):
 
 def _initialize():
     print("Initializing OpenAI provider...")
-    global user_detail_chat_id
-    user_detail_chat_id = _get_user_detail_conv_id("gpt-4.1")
+    global _user_detail_chat_id
+    _user_detail_chat_id = _get_user_detail_conv_id("gpt-4.1")
 
 _initialize()
 

@@ -1,0 +1,108 @@
+import os
+
+from utils.cache_manager import remove_by_ques_from_cache, get_full_qna_cache
+from utils.common_utils import last_modified_iso
+from utils.constants import OTHER_INFO_FILE, RESUME_FOLDER, OTHER_INFO_TRAINED_FILE
+from utils.run_data_manager import get_run_data
+
+_other_info_header = []
+_other_info = {}
+def _load_other_info_data():
+    global _other_info
+    global _other_info_header
+    _other_info_header, _other_info  = _parse_other_info_qnas(OTHER_INFO_FILE, 2)
+
+def _parse_other_info_qnas(file_path, header_lines=0):
+    """
+    Returns:
+        header_lines_list: list of raw header lines
+        qnas: dict {question: answer}
+    """
+    header_lines_list = []
+    qnas = {}
+
+    if not os.path.exists(file_path):
+        return header_lines_list, qnas
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        # read raw header lines
+        for _ in range(header_lines):
+            raw = next(f, None)
+            if raw is not None:
+                header_lines_list.append(raw.rstrip('\n'))
+
+        # parse rest as key: value
+        for raw in f:
+            line = raw.strip()
+            if ':' not in line:
+                continue
+            q, a = line.split(':', 1)
+            qnas[q.strip()] = a.strip()
+
+    return header_lines_list, qnas
+
+def get_changed_other_info(user_detail_chat):
+    """ Return questions from other_info_qnas that need updates. """
+    print("Checking for changed other_info qnas...")
+    other_info_meta = user_detail_chat.get("other_info", {}) if user_detail_chat else {}
+    current_last_modified = last_modified_iso(OTHER_INFO_FILE)
+    if other_info_meta and other_info_meta.get("last_modified") == current_last_modified:
+        return []
+    
+    changed = {}
+    qna_cache = get_full_qna_cache()
+    _, other_info_trained_qnas = _parse_other_info_qnas(OTHER_INFO_TRAINED_FILE)
+    for user_q, user_a in _other_info.items():
+        cache_a = qna_cache.get(user_q)
+        if user_a and user_a != cache_a and user_a != other_info_trained_qnas.get(user_q):
+            changed[user_q] = user_a
+            remove_by_ques_from_cache(user_q)
+    
+    return changed
+
+def save_other_info():
+    with open(OTHER_INFO_FILE, "w", encoding="utf-8") as f:
+        for line in _other_info_header:
+            f.write(line + "\n")
+
+        sorted_items = sorted(_other_info.items(), key=lambda x: x[1] != "")
+        sorted_dict = dict(sorted_items)
+        for k, v in sorted_dict.items():
+            f.write(f"{k}: {v}\n")
+
+def append_other_info(question, answer):
+    _other_info[question] = answer
+    save_other_info()
+
+def is_new_resume(resume_file_path):
+    print("Checking if resume file is new or changed...")
+    run_data = get_run_data()
+    user_detail_chat = run_data.get("user_detail_chat")
+
+    if not user_detail_chat or not isinstance(user_detail_chat, dict):
+        return True
+
+    resume_meta = user_detail_chat.get("resume", {})
+    if not resume_meta or not isinstance(resume_meta, dict):
+        return True
+
+    uploaded_file_path = resume_meta.get("file_path")
+    last_modified = resume_meta.get("last_modified")
+    current_last_modified = last_modified_iso(resume_file_path)
+    return uploaded_file_path != resume_file_path or last_modified != current_last_modified
+
+def get_resume_file():
+    if not os.path.exists(RESUME_FOLDER):
+        raise RuntimeError(f"Resume folder not found: {RESUME_FOLDER}")
+
+    resume_files = [fn for fn in os.listdir(RESUME_FOLDER)
+                    if os.path.isfile(os.path.join(RESUME_FOLDER, fn))]
+
+    if not resume_files:
+        raise RuntimeError(f"No resume file found in folder: {RESUME_FOLDER}")
+    if len(resume_files) > 1:
+        raise RuntimeError("Multiple files found in resume folder. Expected single file.")
+
+    return os.path.join(RESUME_FOLDER, resume_files[0])
+
+_load_other_info_data()

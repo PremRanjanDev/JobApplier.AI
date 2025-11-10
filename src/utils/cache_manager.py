@@ -1,7 +1,7 @@
 import json
 import os
+from .constants import CACHE_FILE
 
-CACHE_FILE = 'sys_data/qnas_cache.json'
 _prompt_cache = {}
 
 def load_prompt_cache():
@@ -30,6 +30,21 @@ def get_from_cache(key, default=None):
 def set_to_cache(key, value):
     _prompt_cache[key] = value
     save_prompt_cache()
+
+def remove_from_cache(key):
+    if key in _prompt_cache:
+        del _prompt_cache[key]
+        save_prompt_cache()
+
+def get_full_cache():
+    return _prompt_cache
+
+def get_full_qna_cache():
+    qna_cache = {}
+    for key, val in _prompt_cache.items():
+        ques = key.split("::")[1]
+        qna_cache[ques] = val
+    return qna_cache
 
 # Load cache at module import
 load_prompt_cache()

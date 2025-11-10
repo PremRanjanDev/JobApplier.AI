@@ -1,14 +1,11 @@
 from openai import OpenAI
 import json
-import os
-import datetime
+from utils.run_data_manager import get_run_data, update_run_data_udc, get_resume_file
+from utils.txt_utils import append_txt_records, get_changed_other_info, is_new_resume
+from utils.common_utils import last_modified_iso
+from utils.constants import OPENAI_KEY_FILE, OTHER_INFO_TRAINED_FILE
 
-# Constants for file paths
-OPENAI_KEY_FILE = 'keys/openai-key.txt'
-RUN_DATA_FILE = 'sys_data/run_data.json'
-CACHE_FILE = 'sys_data/qnas_cache.json'
-RESUME_FOLDER = 'my_data/resume'
-OTHER_INFO_FILE = 'my_data/other_info.txt'
+user_detail_chat_id = None
 
 tools = [
     {
@@ -122,11 +119,10 @@ def ask_text_from_ai(question, validation=None, model: str = "gpt-4.1"):
         question = f"{question.strip()}{validation}"
     print("Getting answer from OpenAI...")
     client = get_openai_client()
-    user_detail_query_id = get_user_detail_conv_id(model)
     response = client.responses.create(
         model=model,
         input=question,
-        previous_response_id=user_detail_query_id
+        previous_response_id=user_detail_chat_id
     )
     return response.output_text
 
@@ -134,81 +130,19 @@ def ask_select_from_ai(question, options, model: str = "gpt-4.1"):
     """Call OpenAI to choose an option."""
     print("Getting select answer from OpenAI...")
     client = get_openai_client()
-    user_detail_query_id = get_user_detail_conv_id(model)
     response = client.responses.create(
         model=model,
         input=f"""Select an option for: {question} 
                 Out of these options: 
                 {options} """,
-        previous_response_id=user_detail_query_id,
+        previous_response_id=user_detail_chat_id,
     )
     return response.output_text
 
-def _load_run_data():
-    try:
-        with open(RUN_DATA_FILE, 'r') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-    except Exception as e:
-        print(f"Failed to load run data: {e}")
-        return {}
-
-def _get_resume_file():
-    if not os.path.exists(RESUME_FOLDER):
-        raise RuntimeError(f"Resume folder not found: {RESUME_FOLDER}")
-
-    resume_files = [fn for fn in os.listdir(RESUME_FOLDER)
-                    if os.path.isfile(os.path.join(RESUME_FOLDER, fn))]
-
-    if not resume_files:
-        raise RuntimeError(f"No resume file found in folder: {RESUME_FOLDER}")
-    if len(resume_files) > 1:
-        raise RuntimeError("Multiple files found in resume folder. Expected single file.")
-
-    return os.path.join(RESUME_FOLDER, resume_files[0])
-
-def _last_modified_iso(file_path):
-    return datetime.datetime.fromtimestamp(
-        os.path.getmtime(file_path), datetime.timezone.utc
-    ).isoformat()
-
-def _cached_chat_valid(run_data, key, file_path, current_last_modified):
-    user_detail_chat = run_data.get(key)
-    if not user_detail_chat or not isinstance(user_detail_chat, dict):
-        return None
-
-    uploaded_files = user_detail_chat.get("files", {})
-    resume_meta = uploaded_files.get("resume") if isinstance(uploaded_files, dict) else None
-    if not resume_meta or not isinstance(resume_meta, dict):
-        return None
-
-    uploaded_file_path = resume_meta.get("file_path")
-    last_modified = resume_meta.get("last_modified")
-    if uploaded_file_path == file_path and last_modified == current_last_modified:
-        return user_detail_chat.get("chat_id")
-    return None
-
-def _save_run_data_chat(key, chat_id, file_path, last_modified):
-    try:
-        run_data = _load_run_data()
-        run_data[key] = {
-            "chat_id": chat_id,
-            "last_updated": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "provider": "OpenAI",
-            "files": {
-                "resume": {
-                    "file_path": file_path,
-                    "last_modified": last_modified
-                }
-            }
-        }
-        with open(RUN_DATA_FILE, 'w') as f:
-            json.dump(run_data, f, indent=4)
-    except Exception as e:
-        print(f"Failed to write run data: {e}")
-
-def _upload_resume_and_start_chat(client, file_path, model):
+def upload_resume_and_start_chat(file_path, model: str = "gpt-4.1"):
+    """ Uploads resume file and starts a new conversation. Returns the conversation ID. """
+    print("Uploading resume and starting new conversation...")
+    client = get_openai_client()
     with open(file_path, "rb") as fh:
         uploaded_file = client.files.create(file=fh, purpose="user_data")
 
@@ -237,33 +171,79 @@ def _upload_resume_and_start_chat(client, file_path, model):
         model=model,
         input=input_content
     )
-    return response.id
+    user_detail_chat_id = response.id
+    resume =  {
+                    "file_path": file_path,
+                    "last_modified": last_modified_iso(file_path)
+                }
+    update_run_data_udc(user_detail_chat_id, "resume", resume)
+    return user_detail_chat_id
 
-def get_user_detail_conv_id(model: str):
+def send_other_info_to_chat(user_detail_chat_id, qnas_dict, model: str = "gpt-4.1"):
+    """ Send qnas_dict as a single text message continuing conversation chat_id. Returns the response id (if any) or None. """
+    print("Sending other_info updates to the conversation...")
+    if not user_detail_chat_id or not qnas_dict:
+        print("No user_detail_chat_id or no qnas to send.")
+        return None
+    qnas = [f"{k}: {v}" for k, v in qnas_dict.items()]
+    lines = ["Here are some updated details:"]
+    for qna in qnas:
+        lines.append(f"- {qna}")
+    payload = "\n".join(lines)
+    try:
+        client = get_openai_client()
+        response = client.responses.create(
+            model=model,
+            input=payload,
+            previous_response_id=user_detail_chat_id
+        )
+
+        other_info =  {
+                    "file_path": OTHER_INFO_FILE,
+                    "last_modified": last_modified_iso(OTHER_INFO_FILE)
+                }
+        append_txt_records(OTHER_INFO_TRAINED_FILE, qnas)
+        update_run_data_udc(user_detail_chat_id, "other_info", other_info)
+        
+        return response.id
+    except Exception as e:
+        print(f"Failed to send other_info to chat: {e}")
+        return None
+
+def _get_user_detail_conv_id(model: str = "gpt-4.1"):
     """
     Return an existing user-detail conversation id if resume file metadata matches,
     otherwise upload resume and start a new conversation, persisting metadata.
+
+    Also handles other_info.txt qnas:
+    - If resume is new -> create new conversation and then send ALL valid qnas (if any).
+    - If resume unchanged -> check other_info qnas against CACHE_FILE and only send changed qnas.
     """
-    run_data = _load_run_data()
+    print("Getting user detail conversation ID...")
+    run_data = get_run_data()
     key = 'user_detail_chat'
 
     try:
-        file_path = _get_resume_file()
+        resume_path = get_resume_file()
     except Exception as e:
         raise RuntimeError(str(e))
 
-    current_last_modified = _last_modified_iso(file_path)
+    user_detail_chat = run_data.get(key)
+    user_detail_chat_id = None
+    if user_detail_chat and isinstance(user_detail_chat, dict):
+        user_detail_chat_id = user_detail_chat.get("chat_id")
 
-    cached_chat_id = _cached_chat_valid(run_data, key, file_path, current_last_modified)
-    if cached_chat_id:
-        return cached_chat_id
+    resume_changed = is_new_resume(resume_path)
 
-    # Not cached or file changed -> create new conversation with file
-    print("Uploading resume file and starting new user detail conversation with AI...")
-    client = get_openai_client()
-    user_detail_chat_id = _upload_resume_and_start_chat(client, file_path, model)
+    if resume_changed:
+        print("Resume file has changed or no existing conversation found.")
+        user_detail_chat_id = upload_resume_and_start_chat(resume_path) 
+        
+    changed_qnas = get_changed_other_info(user_detail_chat)
+    if changed_qnas:
+        print("Sending other_info updates to conversation...")
+        send_other_info_to_chat(user_detail_chat_id, changed_qnas)
 
-    _save_run_data_chat(key, user_detail_chat_id, file_path, current_last_modified)
     return user_detail_chat_id
 
 def ask_openai(prompt: str, model: str = "gpt-4.1"):
@@ -277,6 +257,13 @@ def ask_openai(prompt: str, model: str = "gpt-4.1"):
         input=prompt
     )
     return response.output_text
+
+def _initialize():
+    print("Initializing OpenAI provider...")
+    global user_detail_chat_id
+    user_detail_chat_id = _get_user_detail_conv_id("gpt-4.1")
+
+_initialize()
 
 if __name__ == "__main__":
     response = ask_openai("Write a one-sentence bedtime story about a unicorn.")

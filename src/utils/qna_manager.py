@@ -1,5 +1,7 @@
 from ai.openai_provider import ask_text_from_ai, ask_select_from_ai
 from .cache_manager import get_from_cache, set_to_cache
+from utils.txt_utils import append_txt_records
+from utils.constants import OTHER_INFO_FILE
 
 def get_text_answer(question, validation=None, model: str = "gpt-4.1"):
     """Return cached answer if present (including empty string). Otherwise ask AI and cache result."""
@@ -12,6 +14,7 @@ def get_text_answer(question, validation=None, model: str = "gpt-4.1"):
     # not in cache -> ask AI
     answer = ask_text_from_ai(question, validation=validation, model=model)
     set_to_cache(cache_key, answer)
+    append_txt_records(OTHER_INFO_FILE, f"{question}: {answer}")
     return answer
 
 def get_select_answer(question, options, model: str = "gpt-4.1"):
@@ -24,4 +27,5 @@ def get_select_answer(question, options, model: str = "gpt-4.1"):
     # not in cache -> ask AI
     answer = ask_select_from_ai(question, options, model=model)
     set_to_cache(cache_key, answer)
+    append_txt_records(OTHER_INFO_FILE, f"{question}: {answer}")
     return answer

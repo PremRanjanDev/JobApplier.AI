@@ -1,6 +1,6 @@
 import os
 
-from config import OTHER_INFO_FILE, OTHER_INFO_TRAINED_FILE, RESUME_FOLDER
+from config import OTHER_INFO_FILE, OTHER_INFO_TRAINED_FILE, RESUME_FOLDER, OPENAI_MODEL
 from utils.cache_manager import remove_by_ques_from_cache, get_full_qna_cache
 from utils.common_utils import last_modified_iso
 from utils.run_data_manager import get_run_data
@@ -95,6 +95,7 @@ def is_new_resume(resume_file_path):
     if not user_detail_chat or not isinstance(user_detail_chat, dict):
         return True
 
+    ai_modal = user_detail_chat.get("modal")
     resume_meta = user_detail_chat.get("resume", {})
     if not resume_meta or not isinstance(resume_meta, dict):
         return True
@@ -102,7 +103,7 @@ def is_new_resume(resume_file_path):
     chat_file_path = resume_meta.get("file_path")
     last_modified = resume_meta.get("last_modified")
     current_last_modified = last_modified_iso(resume_file_path)
-    return chat_file_path != resume_file_path or last_modified != current_last_modified
+    return ai_modal != OPENAI_MODEL or chat_file_path != resume_file_path or last_modified != current_last_modified
 
 def get_resume_file():
     if not os.path.exists(RESUME_FOLDER):

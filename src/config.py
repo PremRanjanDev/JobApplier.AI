@@ -24,6 +24,8 @@ LINKEDIN_STATE_FILE = SYS_DATA_DIR / "login" / "linkedin_state.json"
 OPENAI_KEY_FILE = KEYS_DIR / "openai-key.txt"
 GEMINI_KEY_FILE = KEYS_DIR / "gemini-key.txt"
 
+OPENAI_MODEL = "gpt-5-mini"
+
 def get_openai_key():
     """Get OpenAI API key from environment or file"""
     key = os.getenv("OPENAI_API_KEY")

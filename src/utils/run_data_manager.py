@@ -1,7 +1,7 @@
 import datetime
 import json
 
-from config import RUN_DATA_FILE
+from config import RUN_DATA_FILE, OPENAI_MODEL
 
 _run_data = {}
 
@@ -28,6 +28,7 @@ def update_run_data_udc(user_detail_chat_id, prop_key: str, value: dict):
         udc = _run_data.setdefault("user_detail_chat", {})
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
         udc["chat_id"] = user_detail_chat_id
+        udc["modal"] = OPENAI_MODEL
         udc["last_updated"] = now_iso
         udc[prop_key] = value
         

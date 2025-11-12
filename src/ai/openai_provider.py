@@ -3,7 +3,7 @@ import os.path
 
 from openai import OpenAI
 
-from config import OPENAI_KEY_FILE, OTHER_INFO_FILE, OTHER_INFO_TRAINED_FILE
+from config import OPENAI_KEY_FILE, OTHER_INFO_FILE, OTHER_INFO_TRAINED_FILE, OPENAI_MODEL
 from utils.common_utils import last_modified_iso
 from utils.run_data_manager import get_run_data, update_run_data_udc
 from utils.txt_utils import append_txt_records
@@ -80,14 +80,14 @@ def get_openai_client():
         raise RuntimeError(f"Error reading OpenAI API key: {e}")
 
 
-def parse_form(html: str, model: str = "gpt-5"):
+def parse_form(html: str):
     """
     Sends a prompt to OpenAI's Responses API and returns the parsed fields.
     """
     print("Sending prompt to OpenAI...")
     client = get_openai_client()
     response = client.responses.create(
-        model=model,
+        model=OPENAI_MODEL,
         input=[
             {
                 "role": "system",
@@ -105,20 +105,20 @@ def parse_form(html: str, model: str = "gpt-5"):
     return parsed_fields
 
 
-def start_conversation(instruction, model: str = "gpt-5"):
+def start_conversation(instruction):
     """
     Starts a conversation with OpenAI's Responses API and returns the conversation ID.
     """
     print("Starting conversation with OpenAI...")
     client = get_openai_client()
     response = client.responses.create(
-        model=model,
+        model=OPENAI_MODEL,
         input=instruction,
     )
     return response.id
 
 
-def ask_text_from_ai(question, validation=None, model: str = "gpt-5"):
+def ask_text_from_ai(question, validation=None):
     """Call OpenAI and return text answer."""
     # preserve validation only in the prompt sent to AI as before
     validation = f"(Validation: {validation.strip()})" if validation else ""
@@ -127,19 +127,19 @@ def ask_text_from_ai(question, validation=None, model: str = "gpt-5"):
     print("Getting answer from OpenAI...")
     client = get_openai_client()
     response = client.responses.create(
-        model=model,
+        model=OPENAI_MODEL,
         input=question,
         previous_response_id=_user_detail_chat_id
     )
     return response.output_text
 
 
-def ask_select_from_ai(question, options, model: str = "gpt-5"):
+def ask_select_from_ai(question, options):
     """Call OpenAI to choose an option."""
     print("Getting select answer from OpenAI...")
     client = get_openai_client()
     response = client.responses.create(
-        model=model,
+        model=OPENAI_MODEL,
         input=f"""Select an option for: {question} 
                 Out of these options: 
                 {options} """,
@@ -148,19 +148,19 @@ def ask_select_from_ai(question, options, model: str = "gpt-5"):
     return response.output_text
 
 
-def ask_linkedin_connection_note_from_ai(job_title, company_name, recruiter_name, model: str = "gpt-5"):
+def ask_linkedin_connection_note_from_ai(job_title, company_name, recruiter_name):
     """Call OpenAI to generate a LinkedIn connection note."""
     print("Getting LinkedIn connection note from OpenAI...")
     client = get_openai_client()
     response = client.responses.create(
-        model=model,
+        model=OPENAI_MODEL,
         input=f"""Write a LinkedIn connection request note for recruiter: {recruiter_name} 
                  for job {job_title} at {company_name}""",
     )
     return response.output_text
 
 
-def upload_resume_and_start_chat(file_path, model: str = "gpt-5"):
+def upload_resume_and_start_chat(file_path):
     """ Uploads resume file and starts a new conversation. Returns the conversation ID. """
     print("Uploading resume and starting new conversation...")
     client = get_openai_client()
@@ -189,19 +189,19 @@ def upload_resume_and_start_chat(file_path, model: str = "gpt-5"):
     }]
 
     response = client.responses.create(
-        model=model,
+        model=OPENAI_MODEL,
         input=input_content
     )
-    user_detail_chat_id = response.id
     resume =  {
         "file_path": file_path,
         "last_modified": last_modified_iso(file_path)
     }
-    update_run_data_udc(user_detail_chat_id, "resume", resume)
-    return user_detail_chat_id
+    print("Uploaded resume and started new conversation.")
+    update_run_data_udc(response.id, "resume", resume)
+    return response.id
 
 
-def send_other_info_to_chat(user_detail_chat_id, qnas_dict, model: str = "gpt-5"):
+def send_other_info_to_chat(user_detail_chat_id, qnas_dict):
     """ Send qnas_dict as a single text message continuing conversation chat_id. Returns the response id (if any) or None. """
     print("Sending other_info updates to the conversation...")
     if not user_detail_chat_id or not qnas_dict:
@@ -213,17 +213,16 @@ def send_other_info_to_chat(user_detail_chat_id, qnas_dict, model: str = "gpt-5"
     try:
         client = get_openai_client()
         response = client.responses.create(
-            model=model,
+            model=OPENAI_MODEL,
             input=payload,
             previous_response_id=user_detail_chat_id
         )
-
         other_info =  {
             "file_path": os.path.join(OTHER_INFO_FILE),
             "last_modified": last_modified_iso(OTHER_INFO_FILE)
         }
         append_txt_records(OTHER_INFO_TRAINED_FILE, qnas)
-        update_run_data_udc(user_detail_chat_id, "other_info", other_info)
+        update_run_data_udc(response.id, "other_info", other_info)
         print("AI Context updated with other_info:\n", qnas)
         return response.id
     except Exception as e:
@@ -231,7 +230,7 @@ def send_other_info_to_chat(user_detail_chat_id, qnas_dict, model: str = "gpt-5"
         return None
 
 
-def _get_user_detail_conv_id(model: str = "gpt-5"):
+def _get_user_detail_conv_id():
     """
     Return an existing user-detail conversation id if resume file metadata matches,
     otherwise upload resume and start a new conversation, persisting metadata.
@@ -260,25 +259,26 @@ def _get_user_detail_conv_id(model: str = "gpt-5"):
     if resume_changed:
         print("Resume file has changed or no existing conversation found.")
         user_detail_chat_id = upload_resume_and_start_chat(resume_path)
+        print(f"New user_detail_chat_id: {user_detail_chat_id}")
 
     changed_qnas = get_changed_other_info(user_detail_chat, resume_changed)
     if changed_qnas:
         print("Sending other_info updates to conversation...")
         user_detail_chat_id = send_other_info_to_chat(user_detail_chat_id, changed_qnas)
+        print(f"New user_detail_chat_id: {user_detail_chat_id}")
         remove_from_other_info(changed_qnas)
 
-    print(f"New user_detail_chat_id: {user_detail_chat_id}")
     return user_detail_chat_id
 
 
-def ask_openai(prompt: str, model: str = "gpt-5"):
+def ask_openai(prompt: str):
     """
     Sends a prompt to OpenAI's Responses API and returns the raw output text.
     """
     print("Sending prompt to OpenAI...")
     client = get_openai_client()
     response = client.responses.create(
-        model=model,
+        model=OPENAI_MODEL,
         input=prompt
     )
     return response.output_text
@@ -286,7 +286,7 @@ def ask_openai(prompt: str, model: str = "gpt-5"):
 def _initialize():
     print("Initializing OpenAI provider...")
     global _user_detail_chat_id
-    _user_detail_chat_id = _get_user_detail_conv_id("gpt-5")
+    _user_detail_chat_id = _get_user_detail_conv_id()
 
 _initialize()
 

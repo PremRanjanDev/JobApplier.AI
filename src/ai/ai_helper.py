@@ -16,7 +16,7 @@ def read_job_info_by_ai(html):
 def read_job_form_by_ai(html):
     """Extracts job application form fields from the provided HTML using AI."""
     print("Extracting job form fields using AI...", len(html))
-    response = parse_form(minify_html(html), "gpt-5")
+    response = parse_form(minify_html(html))
     return transform_to_object(response)
 
 # def read_job_form_by_ai(html):

@@ -5,7 +5,7 @@ from .cache_manager import get_from_cache, set_to_cache
 _non_caching_ques = ["Summary", "Cover letter", "Cover Letter"]
 
 
-def get_text_answer(question, validation=None, model: str = "gpt-5"):
+def get_text_answer(question, validation=None):
     """Return cached answer if present (including empty string). Otherwise ask AI and cache result."""
     validation = f"(Validation: {validation.strip()})" if validation else ""
     cache_key = f"text::{question.strip()}{validation}"
@@ -14,7 +14,7 @@ def get_text_answer(question, validation=None, model: str = "gpt-5"):
         print("Cache hit for get_text_answer: ", answer)
         return answer
     # not in cache -> ask AI
-    answer = ask_text_from_ai(question, validation, model)
+    answer = ask_text_from_ai(question, validation)
     if answer == "''":
         answer = ""
     if question.strip() not in _non_caching_ques:
@@ -23,7 +23,8 @@ def get_text_answer(question, validation=None, model: str = "gpt-5"):
     print(f"Answer: {answer}")
     return answer
 
-def get_select_answer(question, options, model: str = "gpt-5"):
+
+def get_select_answer(question, options):
     """Return cached select answer if present (including empty string). Otherwise ask AI and cache result."""
     cache_key = f"select::{question.strip()}::{str(options)}"
     answer = get_from_cache(cache_key)
@@ -31,7 +32,7 @@ def get_select_answer(question, options, model: str = "gpt-5"):
         print("Cache hit for get_select_answer: ", answer)
         return answer
     # not in cache -> ask AI
-    answer = ask_select_from_ai(question, options, model)
+    answer = ask_select_from_ai(question, options)
     if answer == "''":
         answer = ""
     if question.strip() not in _non_caching_ques:

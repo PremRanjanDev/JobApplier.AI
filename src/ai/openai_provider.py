@@ -79,7 +79,8 @@ def get_openai_client():
     except Exception as e:
         raise RuntimeError(f"Error reading OpenAI API key: {e}")
 
-def parse_form(html: str, model: str = "gpt-4.1"):
+
+def parse_form(html: str, model: str = "gpt-5"):
     """
     Sends a prompt to OpenAI's Responses API and returns the parsed fields.
     """
@@ -103,7 +104,8 @@ def parse_form(html: str, model: str = "gpt-4.1"):
     parsed_fields = json.loads(response.output[0])
     return parsed_fields
 
-def start_conversation(instruction, model: str = "gpt-4.1"):
+
+def start_conversation(instruction, model: str = "gpt-5"):
     """
     Starts a conversation with OpenAI's Responses API and returns the conversation ID.
     """
@@ -115,7 +117,8 @@ def start_conversation(instruction, model: str = "gpt-4.1"):
     )
     return response.id
 
-def ask_text_from_ai(question, validation=None, model: str = "gpt-4.1"):
+
+def ask_text_from_ai(question, validation=None, model: str = "gpt-5"):
     """Call OpenAI and return text answer."""
     # preserve validation only in the prompt sent to AI as before
     validation = f"(Validation: {validation.strip()})" if validation else ""
@@ -130,7 +133,8 @@ def ask_text_from_ai(question, validation=None, model: str = "gpt-4.1"):
     )
     return response.output_text
 
-def ask_select_from_ai(question, options, model: str = "gpt-4.1"):
+
+def ask_select_from_ai(question, options, model: str = "gpt-5"):
     """Call OpenAI to choose an option."""
     print("Getting select answer from OpenAI...")
     client = get_openai_client()
@@ -144,7 +148,7 @@ def ask_select_from_ai(question, options, model: str = "gpt-4.1"):
     return response.output_text
 
 
-def ask_linkedin_connection_note_from_ai(job_title, company_name, recruiter_name, model: str = "gpt-4.1"):
+def ask_linkedin_connection_note_from_ai(job_title, company_name, recruiter_name, model: str = "gpt-5"):
     """Call OpenAI to generate a LinkedIn connection note."""
     print("Getting LinkedIn connection note from OpenAI...")
     client = get_openai_client()
@@ -156,7 +160,7 @@ def ask_linkedin_connection_note_from_ai(job_title, company_name, recruiter_name
     return response.output_text
 
 
-def upload_resume_and_start_chat(file_path, model: str = "gpt-4.1"):
+def upload_resume_and_start_chat(file_path, model: str = "gpt-5"):
     """ Uploads resume file and starts a new conversation. Returns the conversation ID. """
     print("Uploading resume and starting new conversation...")
     client = get_openai_client()
@@ -174,11 +178,11 @@ def upload_resume_and_start_chat(file_path, model: str = "gpt-4.1"):
                 "type": "input_text",
                 "text": (
                     "This is my resume file. Act as a resume bot and answer next queries based on the information in this file.\n\n"
-                    "Simply return '' if not found or unsure.\n"
+                    "Simply return '' if not found, unsure or question is unclear.\n"
                     "Rules:\n"
                     "- For each question, answer with the value from the provided information in the file.\n"
                     "- Important: For numeric answers provide as integer value.\n"
-                    "- No extra text, explanations, or quotation marks; answer with the value only."
+                    "- No extra text, explanations, quotation marks or acknowledgement feedback; answer with the value only."
                 )
             }
         ]
@@ -197,7 +201,7 @@ def upload_resume_and_start_chat(file_path, model: str = "gpt-4.1"):
     return user_detail_chat_id
 
 
-def send_other_info_to_chat(user_detail_chat_id, qnas_dict, model: str = "gpt-4.1"):
+def send_other_info_to_chat(user_detail_chat_id, qnas_dict, model: str = "gpt-5"):
     """ Send qnas_dict as a single text message continuing conversation chat_id. Returns the response id (if any) or None. """
     print("Sending other_info updates to the conversation...")
     if not user_detail_chat_id or not qnas_dict:
@@ -226,7 +230,8 @@ def send_other_info_to_chat(user_detail_chat_id, qnas_dict, model: str = "gpt-4.
         print(f"Failed to send other_info to chat: {e}")
         return None
 
-def _get_user_detail_conv_id(model: str = "gpt-4.1"):
+
+def _get_user_detail_conv_id(model: str = "gpt-5"):
     """
     Return an existing user-detail conversation id if resume file metadata matches,
     otherwise upload resume and start a new conversation, persisting metadata.
@@ -265,7 +270,8 @@ def _get_user_detail_conv_id(model: str = "gpt-4.1"):
     print(f"New user_detail_chat_id: {user_detail_chat_id}")
     return user_detail_chat_id
 
-def ask_openai(prompt: str, model: str = "gpt-4.1"):
+
+def ask_openai(prompt: str, model: str = "gpt-5"):
     """
     Sends a prompt to OpenAI's Responses API and returns the raw output text.
     """
@@ -280,7 +286,7 @@ def ask_openai(prompt: str, model: str = "gpt-4.1"):
 def _initialize():
     print("Initializing OpenAI provider...")
     global _user_detail_chat_id
-    _user_detail_chat_id = _get_user_detail_conv_id("gpt-4.1")
+    _user_detail_chat_id = _get_user_detail_conv_id("gpt-5")
 
 _initialize()
 

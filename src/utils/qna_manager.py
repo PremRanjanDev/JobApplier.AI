@@ -5,7 +5,7 @@ from .cache_manager import get_from_cache, set_to_cache
 _non_caching_ques = ["Summary", "Cover letter", "Cover Letter"]
 
 
-def get_text_answer(question, validation=None, model: str = "gpt-4.1"):
+def get_text_answer(question, validation=None, model: str = "gpt-5"):
     """Return cached answer if present (including empty string). Otherwise ask AI and cache result."""
     validation = f"(Validation: {validation.strip()})" if validation else ""
     cache_key = f"text::{question.strip()}{validation}"
@@ -23,7 +23,7 @@ def get_text_answer(question, validation=None, model: str = "gpt-4.1"):
     print(f"Answer: {answer}")
     return answer
 
-def get_select_answer(question, options, model: str = "gpt-4.1"):
+def get_select_answer(question, options, model: str = "gpt-5"):
     """Return cached select answer if present (including empty string). Otherwise ask AI and cache result."""
     cache_key = f"select::{question.strip()}::{str(options)}"
     answer = get_from_cache(cache_key)

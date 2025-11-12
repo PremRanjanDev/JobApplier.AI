@@ -1,6 +1,3 @@
-
-from email.mime import text
-from .gemini_provider import ask_gemini
 from utils.common_utils import minify_html, transform_to_object
 from .openai_provider import ask_openai, parse_form
 
@@ -19,7 +16,7 @@ def read_job_info_by_ai(html):
 def read_job_form_by_ai(html):
     """Extracts job application form fields from the provided HTML using AI."""
     print("Extracting job form fields using AI...", len(html))
-    response = parse_form(minify_html(html), "gpt-4.1")
+    response = parse_form(minify_html(html), "gpt-5")
     return transform_to_object(response)
 
 # def read_job_form_by_ai(html):

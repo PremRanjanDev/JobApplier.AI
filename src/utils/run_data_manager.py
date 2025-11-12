@@ -1,7 +1,7 @@
-import os
-import json
 import datetime
-from .constants import RUN_DATA_FILE, RESUME_FOLDER
+import json
+
+from config import RUN_DATA_FILE
 
 _run_data = {}
 

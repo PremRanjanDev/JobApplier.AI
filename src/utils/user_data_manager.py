@@ -1,8 +1,8 @@
 import os
 
+from config import OTHER_INFO_FILE, OTHER_INFO_TRAINED_FILE, RESUME_FOLDER
 from utils.cache_manager import remove_by_ques_from_cache, get_full_qna_cache
 from utils.common_utils import last_modified_iso
-from utils.constants import OTHER_INFO_FILE, RESUME_FOLDER, OTHER_INFO_TRAINED_FILE
 from utils.run_data_manager import get_run_data
 
 _other_info_header = []
@@ -41,12 +41,13 @@ def _parse_other_info_qnas(file_path, header_lines=0):
 
     return header_lines_list, qnas
 
-def get_changed_other_info(user_detail_chat):
+
+def get_changed_other_info(user_detail_chat, is_new_conv=False):
     """ Return questions from other_info_qnas that need updates. """
     print("Checking for changed other_info qnas...")
     other_info_meta = user_detail_chat.get("other_info", {}) if user_detail_chat else {}
     current_last_modified = last_modified_iso(OTHER_INFO_FILE)
-    if other_info_meta and other_info_meta.get("last_modified") == current_last_modified:
+    if not is_new_conv and other_info_meta and other_info_meta.get("last_modified") == current_last_modified:
         return []
     
     changed = {}
@@ -54,11 +55,22 @@ def get_changed_other_info(user_detail_chat):
     _, other_info_trained_qnas = _parse_other_info_qnas(OTHER_INFO_TRAINED_FILE)
     for user_q, user_a in _other_info.items():
         cache_a = qna_cache.get(user_q)
-        if user_a and user_a != cache_a and user_a != other_info_trained_qnas.get(user_q):
+        if (user_a
+                and (is_new_conv
+                     or (user_a != cache_a
+                         and (cache_a is not None
+                              or user_a != other_info_trained_qnas.get(user_q))))):
             changed[user_q] = user_a
             remove_by_ques_from_cache(user_q)
     
     return changed
+
+
+def remove_from_other_info(trained_qnas):
+    for q in trained_qnas:
+        if q in _other_info:
+            del _other_info[q]
+    save_other_info()
 
 def save_other_info():
     with open(OTHER_INFO_FILE, "w", encoding="utf-8") as f:
@@ -71,7 +83,8 @@ def save_other_info():
             f.write(f"{k}: {v}\n")
 
 def append_other_info(question, answer):
-    _other_info[question] = answer
+    global _other_info
+    _other_info = {question: answer} | _other_info
     save_other_info()
 
 def is_new_resume(resume_file_path):
@@ -86,10 +99,10 @@ def is_new_resume(resume_file_path):
     if not resume_meta or not isinstance(resume_meta, dict):
         return True
 
-    uploaded_file_path = resume_meta.get("file_path")
+    chat_file_path = resume_meta.get("file_path")
     last_modified = resume_meta.get("last_modified")
     current_last_modified = last_modified_iso(resume_file_path)
-    return uploaded_file_path != resume_file_path or last_modified != current_last_modified
+    return chat_file_path != resume_file_path or last_modified != current_last_modified
 
 def get_resume_file():
     if not os.path.exists(RESUME_FOLDER):

@@ -1,10 +1,13 @@
-from openai import OpenAI
 import json
-from utils.run_data_manager import get_run_data, update_run_data_udc
-from utils.user_data_manager import get_changed_other_info, is_new_resume, get_resume_file
-from utils.txt_utils import append_txt_records
+import os.path
+
+from openai import OpenAI
+
+from config import OPENAI_KEY_FILE, OTHER_INFO_FILE, OTHER_INFO_TRAINED_FILE
 from utils.common_utils import last_modified_iso
-from utils.constants import OPENAI_KEY_FILE, OTHER_INFO_TRAINED_FILE, OTHER_INFO_FILE
+from utils.run_data_manager import get_run_data, update_run_data_udc
+from utils.txt_utils import append_txt_records
+from utils.user_data_manager import get_changed_other_info, is_new_resume, get_resume_file, remove_from_other_info
 
 _user_detail_chat_id = None
 
@@ -140,6 +143,19 @@ def ask_select_from_ai(question, options, model: str = "gpt-4.1"):
     )
     return response.output_text
 
+
+def ask_linkedin_connection_note_from_ai(job_title, company_name, recruiter_name, model: str = "gpt-4.1"):
+    """Call OpenAI to generate a LinkedIn connection note."""
+    print("Getting LinkedIn connection note from OpenAI...")
+    client = get_openai_client()
+    response = client.responses.create(
+        model=model,
+        input=f"""Write a LinkedIn connection request note for recruiter: {recruiter_name} 
+                 for job {job_title} at {company_name}""",
+    )
+    return response.output_text
+
+
 def upload_resume_and_start_chat(file_path, model: str = "gpt-4.1"):
     """ Uploads resume file and starts a new conversation. Returns the conversation ID. """
     print("Uploading resume and starting new conversation...")
@@ -174,11 +190,12 @@ def upload_resume_and_start_chat(file_path, model: str = "gpt-4.1"):
     )
     user_detail_chat_id = response.id
     resume =  {
-                    "file_path": file_path,
-                    "last_modified": last_modified_iso(file_path)
-                }
+        "file_path": file_path,
+        "last_modified": last_modified_iso(file_path)
+    }
     update_run_data_udc(user_detail_chat_id, "resume", resume)
     return user_detail_chat_id
+
 
 def send_other_info_to_chat(user_detail_chat_id, qnas_dict, model: str = "gpt-4.1"):
     """ Send qnas_dict as a single text message continuing conversation chat_id. Returns the response id (if any) or None. """
@@ -198,9 +215,9 @@ def send_other_info_to_chat(user_detail_chat_id, qnas_dict, model: str = "gpt-4.
         )
 
         other_info =  {
-                    "file_path": OTHER_INFO_FILE,
-                    "last_modified": last_modified_iso(OTHER_INFO_FILE)
-                }
+            "file_path": os.path.join(OTHER_INFO_FILE),
+            "last_modified": last_modified_iso(OTHER_INFO_FILE)
+        }
         append_txt_records(OTHER_INFO_TRAINED_FILE, qnas)
         update_run_data_udc(user_detail_chat_id, "other_info", other_info)
         print("AI Context updated with other_info:\n", qnas)
@@ -231,18 +248,21 @@ def _get_user_detail_conv_id(model: str = "gpt-4.1"):
     user_detail_chat_id = None
     if user_detail_chat and isinstance(user_detail_chat, dict):
         user_detail_chat_id = user_detail_chat.get("chat_id")
+    print(f"Existing user_detail_chat_id: {user_detail_chat_id}")
 
     resume_changed = is_new_resume(resume_path)
 
     if resume_changed:
         print("Resume file has changed or no existing conversation found.")
-        user_detail_chat_id = upload_resume_and_start_chat(resume_path) 
-        
-    changed_qnas = get_changed_other_info(user_detail_chat)
+        user_detail_chat_id = upload_resume_and_start_chat(resume_path)
+
+    changed_qnas = get_changed_other_info(user_detail_chat, resume_changed)
     if changed_qnas:
         print("Sending other_info updates to conversation...")
         user_detail_chat_id = send_other_info_to_chat(user_detail_chat_id, changed_qnas)
+        remove_from_other_info(changed_qnas)
 
+    print(f"New user_detail_chat_id: {user_detail_chat_id}")
     return user_detail_chat_id
 
 def ask_openai(prompt: str, model: str = "gpt-4.1"):

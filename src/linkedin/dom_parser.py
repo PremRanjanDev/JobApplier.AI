@@ -1,10 +1,14 @@
 import json
 
-def extract_form_fields(element):
-    """Extracts input fields from the Easy Apply modal.
+
+def extract_form_info(element):
+    """Extracts form metadata (id, header, progress) from the Easy Apply modal.
     
     Args:
-        element: The modal element to extract fields from
+        element: The modal element to extract info from
+        
+    Returns:
+        dict: Contains id, header, and progress information
     """
     return element.evaluate('''(modal) => {
 
@@ -23,6 +27,25 @@ def extract_form_fields(element):
             progress = (progressElem.textContent || '').trim();
         }
 
+        return { 
+            id: modal.id, 
+            header: headerText, 
+            progress: progress
+        };
+    }''')
+
+
+def extract_form_fields(element):
+    """Extracts input fields from the Easy Apply modal.
+
+    Args:
+        element: The modal element to extract fields from
+        
+    Returns:
+        Array: Fields
+    """
+    return element.evaluate('''(modal) => {
+
         const getFieldError = (element) => {
             const errorId = element.getAttribute('aria-describedby');
             if (errorId) {
@@ -31,7 +54,7 @@ def extract_form_fields(element):
                     return errorEl.textContent.trim();
                 }
             }
-            
+        
             const container = element.closest('.fb-dash-form-element');
             if (container) {
                 const errorEl = container.querySelector('.artdeco-inline-feedback--error .artdeco-inline-feedback__message');
@@ -44,7 +67,7 @@ def extract_form_fields(element):
 
         const fields = [];
         const formElements = modal.querySelectorAll('input, select, fieldset, textarea');
-        
+    
         formElements.forEach(element => {
             if (element.type === 'hidden' || !element.offsetParent) {
                 return;
@@ -105,7 +128,7 @@ def extract_form_fields(element):
                 };
             }
             // Radio groups
-            else if (element.matches('fieldset[data-test-form-builder-radio-button-form-component="true"]')) {
+            else if (element.matches('fieldset[data-test-form-builder-radio-button-form-component="true"], fieldset[data-test-checkbox-form-component="true"]')) {
                 let label = '';
                 const legend = element.querySelector('legend');
                 if (legend) {
@@ -151,15 +174,8 @@ def extract_form_fields(element):
                 fields.push(fieldData);
             }
         });
-
-        return { 
-            id: modal.id, 
-            header: headerText, 
-            progress: progress, 
-            fields: fields,
-            hasErrors: fields.some(f => f.hasError),
-            totalErrors: fields.filter(_ => _.hasError).length
-        };
+        
+        return fields;
     }''')
 
 def extract_step_controls(element):
@@ -216,11 +232,12 @@ def extract_step_controls(element):
         return controls;
     }''')
 
-def form_state(form_info):
+
+def form_state(form_info, form_fields):
     """Returns a hashable representation of the form's header and its fields/values."""
     return json.dumps({
         "id": form_info.get("id", ""),
         "header": form_info.get("header", ""),
         "progress": form_info.get("progress", ""),
-        "fields": [f'{field["label"]}:{field.get("error", "")}:{field["value"]}' for field in form_info.get("fields", [])],
+        "fields": [f'{field["label"]}:{field.get("error", "")}:{field["value"]}' for field in form_fields],
     })

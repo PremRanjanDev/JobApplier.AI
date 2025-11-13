@@ -1,21 +1,25 @@
-from .dom_parser import extract_form_fields, extract_form_info, extract_step_controls, form_state
 from utils.qna_manager import get_text_answer, get_select_answer
+from .dom_parser import extract_form_fields, extract_form_info, extract_step_controls, form_state
 
 timeout_5s = 5000 # 5 seconds timeout for waiting for controls
 timeout_2s = 2000 # 2 seconds timeout for waiting for clicks
 timeout_1s = 1000 # 1 seconds timeout for waiting extra
 
-def apply_jobs_easy_apply(page, keyword, location):
+
+def apply_jobs_easy_apply(page, keywords, location):
     """Performs the Easy Apply process for a jobs on LinkedIn."""
     print("Starting the Easy Apply process...")
-    page_number = 1
+    print(f"Searching for jobs: {keywords} in {location}")
+    page.goto(f"https://www.linkedin.com/jobs/search/?keywords={keywords}&location={location}&f_AL=true")
+    next_page_selector = 'button[aria-label="View next page"]'
     while True:
-        print(f"Fetching job listings, page {page_number}...")
-        jobs = fetch_job_list(page, keyword, location, page_number)
+        current_page = page.query_selector('button[aria-current="page"][class*="button--active"] span').inner_text()
+        print(f"Fetching job listings. Current page: {current_page}")
+        jobs = fetch_job_list(page)
         if not jobs:
             print("No more job listings found. Ending process.")
             break
-        print(f"Processing {len(jobs)} jobs on page {page_number}...")
+        print(f"Processing {len(jobs)} jobs on page {current_page}...")
         for job in jobs:
             print("Processing job...")
             job_id = job.get_attribute('data-job-id')
@@ -26,24 +30,17 @@ def apply_jobs_easy_apply(page, keyword, location):
                 print("Successfully applied.")
             else:
                 print(f"Failed to apply. Status: {status}")
-        page_number += 1
+        next_page_button = page.query_selector(next_page_selector)
+        if next_page_button:
+            next_page_button.click()
+            page.wait_for_timeout(timeout_2s)
+        else:
+            print("No more pages for job search list found. Ending process.")
+            break
 
-def fetch_job_list(page, job_title, location, page_number=1):
+
+def fetch_job_list(page):
     """Fetches job listings from LinkedIn based on job title and location."""
-    print(f"Searching for jobs: {job_title} in {location}")
-    page.goto(f"https://www.linkedin.com/jobs/search/?keywords={job_title}&location={location}&f_AL=true")
-    
-    print("Requested page number:", page_number)
-    if page_number > 1:
-        pagination_selector = f'button[aria-label="Page {page_number}"]'
-        try:
-            page.wait_for_selector(pagination_selector, timeout=timeout_5s)
-            page.click(pagination_selector, timeout=timeout_2s)
-        except Exception as e:
-            print(f"Could not click pagination button for page {page_number}: {e}")
-            return []
-    
-    page.wait_for_timeout(timeout_2s)
     jobs = page.query_selector_all('.job-card-container--clickable')
 
     prev_job_len = 0

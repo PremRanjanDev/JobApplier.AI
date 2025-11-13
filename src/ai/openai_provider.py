@@ -201,11 +201,11 @@ def upload_resume_and_start_chat(file_path):
     return response.id
 
 
-def send_other_info_to_chat(user_detail_chat_id, qnas_dict):
+def send_other_info_to_chat(previous_chat_id, qnas_dict):
     """ Send qnas_dict as a single text message continuing conversation chat_id. Returns the response id (if any) or None. """
     print("Sending other_info updates to the conversation...")
-    if not user_detail_chat_id or not qnas_dict:
-        print("No user_detail_chat_id or no qnas to send.")
+    if not previous_chat_id or not qnas_dict:
+        print("No previous user_detail_chat_id or no qnas to send.")
         return None
     qnas = [f"{k}: {v}" for k, v in qnas_dict.items()]
     prompt = "Here are some updated details, please update your information accordingly and respond based on updated data for future questions."
@@ -215,7 +215,7 @@ def send_other_info_to_chat(user_detail_chat_id, qnas_dict):
         response = client.responses.create(
             model=OPENAI_MODEL,
             input=payload,
-            previous_response_id=user_detail_chat_id
+            previous_response_id=previous_chat_id
         )
         other_info =  {
             "file_path": os.path.join(OTHER_INFO_FILE),

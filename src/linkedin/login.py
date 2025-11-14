@@ -8,13 +8,12 @@ def login(browser, save_login=False):
     Restores session state if available, saves it if requested.
     Returns (page, True) if logged in, (page, False) otherwise."""
     print("Starting LinkedIn login process...")
-    context_args = {}
+    context_args = {"no_viewport": True}
     if os.path.exists(LINKEDIN_STATE_FILE):
         print("LinkedIn session state file found. Restoring session...")
         context_args["storage_state"] = LINKEDIN_STATE_FILE
 
     page = browser.new_page(**context_args)
-
     print("Navigating to LinkedIn feed...")
     page.goto("https://www.linkedin.com/feed/")
 

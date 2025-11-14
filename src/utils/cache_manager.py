@@ -1,6 +1,6 @@
 import json
 import os
-from src.config import CACHE_FILE
+from config import CACHE_FILE
 
 _prompt_cache = {}
 

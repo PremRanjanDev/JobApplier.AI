@@ -178,7 +178,7 @@ def upload_resume_and_start_chat(file_path):
                 "type": "input_text",
                 "text": (
                     "This is my resume file. Act as a resume bot and answer next queries based on the information in this file.\n\n"
-                    "Simply return '' if not found, unsure or question is unclear.\n"
+                    "Simply return '' if not found or unsure.\n"
                     "Rules:\n"
                     "- For each question, answer with the value from the provided information in the file.\n"
                     "- Important: For numeric answers provide as integer value.\n"
@@ -203,10 +203,10 @@ def upload_resume_and_start_chat(file_path):
 
 def send_other_info_to_chat(previous_chat_id, qnas_dict):
     """ Send qnas_dict as a single text message continuing conversation chat_id. Returns the response id (if any) or None. """
-    print("Sending other_info updates to the conversation...")
     if not previous_chat_id or not qnas_dict:
         print("No previous user_detail_chat_id or no qnas to send.")
         return None
+    print("Updating AI context with other_info.")
     qnas = [f"{k}: {v}" for k, v in qnas_dict.items()]
     prompt = "Here are some updated details, please update your information accordingly and respond based on updated data for future questions."
     payload = f"{prompt}\n" + "\n - ".join(qnas)
@@ -223,7 +223,6 @@ def send_other_info_to_chat(previous_chat_id, qnas_dict):
         }
         append_txt_records(OTHER_INFO_TRAINED_FILE, qnas)
         update_run_data_udc(response.id, "other_info", other_info)
-        print("AI Context updated with other_info:\n", qnas)
         return response.id
     except Exception as e:
         print(f"Failed to send other_info to chat: {e}")
@@ -263,7 +262,7 @@ def _get_user_detail_conv_id():
 
     changed_qnas = get_changed_other_info(user_detail_chat, resume_changed)
     if changed_qnas:
-        print("Sending other_info updates to conversation...")
+        print("Sending other_info updates to conversation...\n", changed_qnas)
         user_detail_chat_id = send_other_info_to_chat(user_detail_chat_id, changed_qnas)
         print(f"New user_detail_chat_id: {user_detail_chat_id}")
         remove_from_other_info(changed_qnas)

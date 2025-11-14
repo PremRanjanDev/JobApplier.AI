@@ -13,13 +13,12 @@ def apply_jobs_easy_apply(page, keywords, location):
     page.goto(f"https://www.linkedin.com/jobs/search/?keywords={keywords}&location={location}&f_AL=true")
     next_page_selector = 'button[aria-label="View next page"]'
     while True:
-        current_page = page.query_selector('button[aria-current="page"][class*="button--active"] span').inner_text()
-        print(f"Fetching job listings. Current page: {current_page}")
+        print(f"Fetching job listings.")
         jobs = fetch_job_list(page)
         if not jobs:
             print("No more job listings found. Ending process.")
             break
-        print(f"Processing {len(jobs)} jobs on page {current_page}...")
+        print(f"Processing {len(jobs)} jobs...")
         for job in jobs:
             print("Processing job...")
             job_id = job.get_attribute('data-job-id')
@@ -30,8 +29,11 @@ def apply_jobs_easy_apply(page, keywords, location):
                 print("Successfully applied.")
             else:
                 print(f"Failed to apply. Status: {status}")
+        current_page = page.query_selector('button[aria-current="page"][class*="button--active"] span').inner_text()
+        print(f"Current page '{current_page}' completed.")
         next_page_button = page.query_selector(next_page_selector)
         if next_page_button:
+            print("Moving to next page...")
             next_page_button.click()
             page.wait_for_timeout(timeout_2s)
         else:

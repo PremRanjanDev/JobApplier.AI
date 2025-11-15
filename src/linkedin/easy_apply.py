@@ -18,7 +18,7 @@ def apply_jobs_easy_apply(page, keywords, location):
         if not jobs:
             print("No more job listings found. Ending process.")
             break
-        print(f"Processing {len(jobs)} jobs...")
+        print(f"Found {len(jobs)} jobs on the current page.")
         for job in jobs:
             print("Processing job...")
             job_id = job.get_attribute('data-job-id')
@@ -86,6 +86,8 @@ def find_and_click_easy_apply(job_details_section):
         if applied_message_elem:
             return False, "Already applied"
         return False, "Easy Apply button not found"
+    elif not easy_apply_button.is_enabled():
+        return False, "Easy Apply button is DISABLED"
     
     easy_apply_button.click()
     return True, "Success"
@@ -148,7 +150,7 @@ def apply_job(page, job):
     try:
         if not click_job_card(page, job):
             return False, "Failed to click job card"
-        
+
         page.wait_for_timeout(timeout_1s)
         job_details_section = page.wait_for_selector(
             'div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"]',

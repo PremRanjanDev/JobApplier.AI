@@ -2,6 +2,21 @@
 import os
 from pathlib import Path
 
+# Job search parameters
+JOB_KEYWORDS = "Java"
+JOB_LOCATION = "Singapore"
+
+# Browser settings
+HIDE_BROWSER = False  # Run headless
+OPEN_MAXIMIZED = True
+
+# OpenAI model
+OPENAI_MODEL = "gpt-5-mini"
+
+# Job application settings
+CONNECT_RECRUITER = True
+MESSAGE_RECRUITER = True
+
 # Base directories
 BASE_DIR = Path(__file__).parent.parent
 SRC_DIR = BASE_DIR / "src"
@@ -23,14 +38,6 @@ LINKEDIN_STATE_FILE = SYS_DATA_DIR / "login" / "linkedin_state.json"
 # API Keys (prefer environment variables)
 OPENAI_KEY_FILE = KEYS_DIR / "openai-key.txt"
 GEMINI_KEY_FILE = KEYS_DIR / "gemini-key.txt"
-
-# OpenAI model
-OPENAI_MODEL = "gpt-5-mini"
-
-# Browser settings
-HIDE_BROWSER = False  # Run headless
-OPEN_MAXIMIZED = True
-
 
 def get_openai_key():
     """Get OpenAI API key from environment or file"""

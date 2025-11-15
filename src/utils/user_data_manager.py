@@ -7,6 +7,8 @@ from utils.run_data_manager import get_run_data
 
 _other_info_header = []
 _other_info = {}
+
+
 def _load_other_info_data():
     global _other_info
     global _other_info_header

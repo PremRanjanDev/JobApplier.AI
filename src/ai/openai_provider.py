@@ -178,7 +178,7 @@ def upload_resume_and_start_chat(file_path):
                 "type": "input_text",
                 "text": (
                     "This is my resume file. Act as a resume bot and answer next queries based on the information in this file.\n\n"
-                    "Simply return '' if not found or unsure.\n"
+                    "Simply return '' if not found, unsure or unclear question.\n"
                     "Rules:\n"
                     "- For each question, answer with the value from the provided information in the file.\n"
                     "- Important: For numeric answers provide as integer value.\n"

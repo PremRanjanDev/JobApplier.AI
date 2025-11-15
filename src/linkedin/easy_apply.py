@@ -84,7 +84,7 @@ def find_and_click_easy_apply(job_details_section):
     if not easy_apply_button:
         applied_message_elem = job_details_section.query_selector('.artdeco-inline-feedback--success .artdeco-inline-feedback__message')
         if applied_message_elem:
-            return False, "Already applied"
+            return False, applied_message_elem.inner_text()
         return False, "Easy Apply button not found"
     elif not easy_apply_button.is_enabled():
         return False, "Easy Apply button is DISABLED"

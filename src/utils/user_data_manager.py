@@ -12,9 +12,10 @@ _other_info = {}
 def _load_other_info_data():
     global _other_info
     global _other_info_header
-    _other_info_header, _other_info  = _parse_other_info_qnas(OTHER_INFO_FILE, 2)
+    _other_info_header, _other_info = parse_other_info_qnas(OTHER_INFO_FILE, 2)
 
-def _parse_other_info_qnas(file_path, header_lines=0):
+
+def parse_other_info_qnas(file_path, header_lines=0):
     """
     Returns:
         header_lines_list: list of raw header lines
@@ -47,14 +48,14 @@ def _parse_other_info_qnas(file_path, header_lines=0):
 def get_changed_other_info(user_detail_chat, is_new_conv=False):
     """ Return questions from other_info_qnas that need updates. """
     print("Checking for changed other_info qnas...")
-    other_info_meta = user_detail_chat.get("other_info", {}) if user_detail_chat else {}
+    other_info_meta = user_detail_chat.get("other_info", {})
     current_last_modified = last_modified_iso(OTHER_INFO_FILE)
-    if not is_new_conv and other_info_meta and other_info_meta.get("last_modified") == current_last_modified:
+    if not is_new_conv and other_info_meta.get("last_modified") == current_last_modified:
         return []
     
     changed = {}
     qna_cache = get_full_qna_cache()
-    _, other_info_trained_qnas = _parse_other_info_qnas(OTHER_INFO_TRAINED_FILE)
+    _, other_info_trained_qnas = parse_other_info_qnas(OTHER_INFO_TRAINED_FILE)
     for user_q, user_a in _other_info.items():
         cache_a = qna_cache.get(user_q)
         if (user_a

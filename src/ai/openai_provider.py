@@ -196,7 +196,7 @@ def upload_resume_and_start_chat(file_path):
         "file_path": file_path,
         "last_modified": last_modified_iso(file_path)
     }
-    print("Uploaded resume and started new conversation.")
+    print("Uploaded resume and started new conversation with AI feedback: ", response.output_text)
     update_run_data_udc(response.id, "resume", resume)
     return response.id
 
@@ -221,6 +221,7 @@ def send_other_info_to_chat(previous_chat_id, qnas_dict):
             "file_path": os.path.join(OTHER_INFO_FILE),
             "last_modified": last_modified_iso(OTHER_INFO_FILE)
         }
+        print("other_info updated with AI feedback: ", response.output_text)
         append_txt_records(OTHER_INFO_TRAINED_FILE, qnas)
         update_run_data_udc(response.id, "other_info", other_info)
         return response.id
@@ -247,18 +248,16 @@ def _get_user_detail_conv_id():
     except Exception as e:
         raise RuntimeError(str(e))
 
-    user_detail_chat = run_data.get(key)
-    user_detail_chat_id = None
-    if user_detail_chat and isinstance(user_detail_chat, dict):
-        user_detail_chat_id = user_detail_chat.get("chat_id")
+    user_detail_chat = run_data.get(key, {})
+    user_detail_chat_id = user_detail_chat.get("chat_id")
     print(f"Existing user_detail_chat_id: {user_detail_chat_id}")
 
-    resume_changed = is_new_resume(resume_path)
-
-    if resume_changed:
+    resume_changed = False
+    if not user_detail_chat_id or is_new_resume(resume_path):
         print("Resume file has changed or no existing conversation found.")
         user_detail_chat_id = upload_resume_and_start_chat(resume_path)
         print(f"New user_detail_chat_id: {user_detail_chat_id}")
+        resume_changed = True
 
     changed_qnas = get_changed_other_info(user_detail_chat, resume_changed)
     if changed_qnas:

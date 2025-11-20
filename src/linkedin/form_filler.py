@@ -34,7 +34,7 @@ def enter_text_field(page, input_field):
         if current_value:
             page.fill(selector, "")
             page.wait_for_timeout(200)
-        page.type(selector, new_value, delay=10)
+        page.type(selector, new_value, delay=2)
         page.wait_for_timeout(timeout_1s)
 
 

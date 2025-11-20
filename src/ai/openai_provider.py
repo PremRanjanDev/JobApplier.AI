@@ -10,6 +10,7 @@ from utils.txt_utils import append_txt_records
 from utils.user_data_manager import get_changed_other_info, is_new_resume, get_resume_file, remove_from_other_info
 
 _user_detail_chat_id = None
+_current_job_chat_id = None
 
 tools = [
     {
@@ -118,6 +119,12 @@ def start_conversation(instruction):
     return response.id
 
 
+def set_current_job_chat_id(chat_id):
+    global _current_job_chat_id
+    _current_job_chat_id = chat_id
+    print(f"Current job chat_id: {_current_job_chat_id}")
+
+
 def ask_text_from_ai(question, validation=None):
     """Call OpenAI and return text answer."""
     # preserve validation only in the prompt sent to AI as before
@@ -129,7 +136,7 @@ def ask_text_from_ai(question, validation=None):
     response = client.responses.create(
         model=OPENAI_MODEL,
         input=question,
-        previous_response_id=_user_detail_chat_id
+        previous_response_id=_current_job_chat_id or _user_detail_chat_id
     )
     return response.output_text
 
@@ -143,7 +150,7 @@ def ask_select_from_ai(question, options):
         input=f"""Select an option for: {question} 
                 Out of these options: 
                 {options} """,
-        previous_response_id=_user_detail_chat_id,
+        previous_response_id=_current_job_chat_id or _user_detail_chat_id
     )
     return response.output_text
 
@@ -177,12 +184,14 @@ def upload_resume_and_start_chat(file_path):
             {
                 "type": "input_text",
                 "text": (
-                    "This is my resume file. Act as a resume bot and answer next queries based on the information in this file.\n\n"
-                    "Simply return '' if not found, unsure or unclear question.\n"
-                    "Rules:\n"
-                    "- For each question, answer with the value from the provided information in the file.\n"
-                    "- Important: For numeric answers provide as integer value.\n"
-                    "- No extra text, explanations, quotation marks or acknowledgement feedback; answer with the value only."
+                    "This file is my resume. You are a resume assistant that answers future questions to fill job application forms.\n"
+                    "\n"
+                    "Guidelines:\n"
+                    "- Answer using information from the resume and any new details I provide.\n"
+                    "- If information is missing, unclear, or not applicable, return ''.\n"
+                    "- Numeric answers must be integers.\n"
+                    "- For items such as summary or cover letter, craft role-appropriate response.\n"
+                    "- Output answers only, no explanations, formatting, quotes, or extra text."
                 )
             }
         ]
@@ -227,6 +236,33 @@ def send_other_info_to_chat(previous_chat_id, qnas_dict):
         return response.id
     except Exception as e:
         print(f"Failed to send other_info to chat: {e}")
+        return None
+
+
+def start_current_job_query_chat(job_details):
+    """ Send Job Details and start a new conversation to answer a query specific to the job. Returns the conversation ID. """
+    if not _user_detail_chat_id:
+        print("No user_detail_chat_id found.")
+        return None
+    if not job_details:
+        print("No job_details found.")
+        return None
+    print("Current job details chat id:", _current_job_chat_id)
+    print("Updating AI context with Job Details.")
+    payload = f"Here is the job details I am applying for, respond future queries based on this and previously provided user details. \n{job_details}"
+    try:
+        client = get_openai_client()
+        response = client.responses.create(
+            model=OPENAI_MODEL,
+            input=payload,
+            previous_response_id=_user_detail_chat_id
+        )
+        print("Job Details updated with AI feedback: ", response.output_text)
+        set_current_job_chat_id(response.id)
+        print("Current job details chat id:", _current_job_chat_id)
+        return response.id
+    except Exception as e:
+        print(f"Failed to send job_details to chat: {e}")
         return None
 
 

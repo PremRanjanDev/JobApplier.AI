@@ -4,7 +4,6 @@ from .cache_manager import get_from_cache, set_to_cache
 
 _non_caching_ques = ["Summary", "Cover letter", "Cover Letter"]
 
-
 def get_text_answer(question, validation=None):
     """Return cached answer if present (including empty string). Otherwise ask AI and cache result."""
     validation = f"(Validation: {validation.strip()})" if validation else ""
@@ -13,7 +12,6 @@ def get_text_answer(question, validation=None):
     if answer is not None:
         print("Cache hit for get_text_answer: ", answer)
         return answer
-    # not in cache -> ask AI
     answer = ask_text_from_ai(question, validation)
     if answer == "''":
         answer = ""

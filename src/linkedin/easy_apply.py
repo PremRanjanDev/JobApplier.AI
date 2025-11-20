@@ -1,8 +1,10 @@
 import datetime
+
 from utils.run_data_manager import update_run_data_job_applications
 from .application_flow import apply_job
 from .constants import timeout_2s
 from .job_search import fetch_job_list
+
 
 def apply_jobs_easy_apply(page, keywords, location):
     """Performs the Easy Apply process for jobs on LinkedIn."""

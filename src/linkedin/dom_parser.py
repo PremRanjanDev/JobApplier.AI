@@ -1,6 +1,41 @@
 import json
 
 
+def extract_job_details(element):
+    """
+    Extracts job details from the job detail section.
+    Extract details as, jobTitle, companyName, location, and description
+    """
+    return element.evaluate('''(element) => {
+    
+            // Get job title
+            let jobTitle = '';
+            const titleElem = element.querySelector('div[class*="job-title"]');
+            if (titleElem) {
+                jobTitle = titleElem.textContent.trim();
+            }
+            
+            // Get job title
+            let companyName = '';
+            const companyElem = element.querySelector('div[class*="company-name"]');
+            if (companyElem) {
+                companyName = companyElem.textContent.trim();
+            }
+            
+            // Get job description let jobDescription = ''; 
+            const jobDescriptionElem = element.querySelector('div[class*="jobs-description"], div[class*="job-description"]'); 
+            if (jobDescriptionElem) { 
+                jobDescription = jobDescriptionElem.textContent.replace(/\\s{2,}/g, ' \\n').trim(); 
+            }
+    
+            return { 
+                title: jobTitle,
+                company: companyName,
+                description: jobDescription
+            };
+        }''')
+
+
 def extract_form_info(element):
     """Extracts form metadata (id, header, progress) from the Easy Apply modal.
     

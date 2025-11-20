@@ -1,10 +1,11 @@
+from ai.openai_provider import start_current_job_query_chat
+from config import EXCLUDE_COMPANIES
 from .constants import timeout_1s, timeout_2s, timeout_5s
 from .dom_parser import (
     extract_form_fields,
     extract_form_info,
     extract_step_controls,
-    form_state,
-)
+    form_state, extract_job_details)
 from .form_filler import fill_all_fields
 from .job_search import click_job_card
 
@@ -106,11 +107,19 @@ def apply_job(page, job):
             'div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"]',
             timeout=timeout_5s,
         )
+        job_details = extract_job_details(job_details_section)
+        print(f"Job details: {job_details}")
+        company = (job_details['company'] or "").lower()
+        if EXCLUDE_COMPANIES and any(excluded.lower() in company for excluded in EXCLUDE_COMPANIES):
+            print(f"Skipping {company} due to EXCLUDE_COMPANIES")
+            return False, f"Excluded company '{job_details['company']}'"
+
         status, message = find_and_click_easy_apply(job_details_section)
         if not status:
             return False, message
 
         page.wait_for_timeout(timeout_1s)
+        start_current_job_query_chat(job_details)
         return handle_application_form(page)
 
     except Exception as e:

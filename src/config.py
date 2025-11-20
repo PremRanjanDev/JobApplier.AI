@@ -3,8 +3,11 @@ import os
 from pathlib import Path
 
 # Job search parameters
-JOB_KEYWORDS = "Java"
+JOB_KEYWORDS = "Java react"
 JOB_LOCATION = "Singapore"
+
+# Exclude companies
+EXCLUDE_COMPANIES = []
 
 # Browser settings
 HIDE_BROWSER = False  # Run headless

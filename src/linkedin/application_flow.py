@@ -18,15 +18,9 @@ def find_and_click_easy_apply(job_details_section):
     easy_apply_button = job_details_section.query_selector(
         'button[aria-label^="Easy Apply"]'
     )
-    if not easy_apply_button:
-        applied_message_elem = job_details_section.query_selector(
-            ".artdeco-inline-feedback--success .artdeco-inline-feedback__message"
-        )
-        if applied_message_elem:
-            return False, applied_message_elem.inner_text()
-        return False, "Easy Apply button not found"
-    elif not easy_apply_button.is_enabled():
-        return False, "Easy Apply button is DISABLED"
+    if not easy_apply_button or not easy_apply_button.is_enabled():
+        applied_message = job_details_section.query_selector(".artdeco-inline-feedback[role='alert']").inner_text()
+        return False, applied_message
 
     easy_apply_button.click()
     return True, "Success"

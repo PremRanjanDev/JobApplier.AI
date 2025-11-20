@@ -190,7 +190,7 @@ def upload_resume_and_start_chat(file_path):
                     "- Answer using information from the resume and any new details I provide.\n"
                     "- If information is missing, unclear, or not applicable, return ''.\n"
                     "- Numeric answers must be integers.\n"
-                    "- For items such as summary or cover letter, craft role-appropriate response.\n"
+                    "- For items such as headline, summary or cover letter, craft role-appropriate response.\n"
                     "- Output answers only, no explanations, formatting, quotes, or extra text."
                 )
             }

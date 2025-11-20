@@ -2,7 +2,7 @@ from ai.openai_provider import ask_text_from_ai, ask_select_from_ai
 from utils.user_data_manager import append_other_info
 from .cache_manager import get_from_cache, set_to_cache
 
-_non_caching_ques = ["Summary", "Cover letter", "Cover Letter"]
+_non_caching_ques = ["Headline", "Summary", "Cover letter", "Cover Letter"]
 
 def get_text_answer(question, validation=None):
     """Return cached answer if present (including empty string). Otherwise ask AI and cache result."""

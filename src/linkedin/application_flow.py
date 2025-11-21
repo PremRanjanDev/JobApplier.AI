@@ -1,5 +1,5 @@
 from ai.openai_provider import start_current_job_query_chat
-from config import EXCLUDE_COMPANIES
+from config import EXCLUDE_COMPANIES, RELEVANCY_PERCENTAGE
 from .constants import timeout_1s, timeout_2s, timeout_5s
 from .dom_parser import (
     extract_form_fields,
@@ -10,8 +10,8 @@ from .form_filler import fill_all_fields
 from .job_search import click_job_card
 
 
-def find_and_click_easy_apply(job_details_section):
-    """Finds and clicks the Easy Apply button. Returns (status, message)."""
+def find_easy_apply_button(job_details_section):
+    """Finds the Easy Apply button. Returns (status, message)."""
     if not job_details_section:
         return False, "Job details not found"
 
@@ -19,11 +19,10 @@ def find_and_click_easy_apply(job_details_section):
         'button[aria-label^="Easy Apply"]'
     )
     if not easy_apply_button or not easy_apply_button.is_enabled():
-        applied_message = job_details_section.query_selector(".artdeco-inline-feedback[role='alert']").inner_text()
+        applied_message = job_details_section.query_selector('.artdeco-inline-feedback[role="alert"]').inner_text()
         return False, applied_message
 
-    easy_apply_button.click()
-    return True, "Success"
+    return True, easy_apply_button
 
 
 def handle_application_form(page):
@@ -42,11 +41,11 @@ def handle_application_form(page):
         if not application_form:
             return False, "Application form not found"
 
-        status, message = process_form_step(page, application_form, previous_state)
-        if not status:
-            return False, message
+        moved, frm_state_or_msg = process_form_step(page, application_form, previous_state)
+        if not moved:
+            return False, frm_state_or_msg
         page.wait_for_timeout(timeout_1s)
-        previous_state = message  # message contains the form state in this case
+        previous_state = frm_state_or_msg
 
 
 def process_form_step(page, application_form, previous_state):
@@ -108,12 +107,17 @@ def apply_job(page, job):
             print(f"Skipping {company} due to EXCLUDE_COMPANIES")
             return False, f"Excluded company '{job_details['company']}'"
 
-        status, message = find_and_click_easy_apply(job_details_section)
-        if not status:
-            return False, message
+        is_open, easy_apply_btn_or_msg = find_easy_apply_button(job_details_section)
+        if not is_open:
+            return False, easy_apply_btn_or_msg
 
+        relevancy_status = start_current_job_query_chat(job_details)
+        print(f"Relevancy status: {relevancy_status}")
+        if relevancy_status.get("relevancyPercentage", 0) < RELEVANCY_PERCENTAGE:
+            return False, "Job not relevant"
+
+        easy_apply_btn_or_msg.click()
         page.wait_for_timeout(timeout_1s)
-        start_current_job_query_chat(job_details)
         return handle_application_form(page)
 
     except Exception as e:

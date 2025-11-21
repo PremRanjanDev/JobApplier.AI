@@ -56,7 +56,7 @@ def transform_to_object(json_text):
     """
     print("Transforming JSON text to object...", len(json_text))
     try:
-        return json.loads(json_text)
+        return json.loads(json_text.strip())
     except Exception as e:
         print("Error decoding JSON:", e)
         return None

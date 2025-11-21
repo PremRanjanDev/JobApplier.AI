@@ -4,7 +4,7 @@ import os.path
 from openai import OpenAI
 
 from config import OPENAI_KEY_FILE, OTHER_INFO_FILE, OTHER_INFO_TRAINED_FILE, OPENAI_MODEL
-from utils.common_utils import last_modified_iso
+from utils.common_utils import last_modified_iso, transform_to_object
 from utils.run_data_manager import get_run_data, update_run_data_udc
 from utils.txt_utils import append_txt_records
 from utils.user_data_manager import get_changed_other_info, is_new_resume, get_resume_file, remove_from_other_info
@@ -238,9 +238,20 @@ def send_other_info_to_chat(previous_chat_id, qnas_dict):
         print(f"Failed to send other_info to chat: {e}")
         return None
 
-
 def start_current_job_query_chat(job_details):
-    """ Send Job Details and start a new conversation to answer a query specific to the job. Returns the conversation ID. """
+    """
+    Send Job Details into the existing user-details conversation so AI can:
+    - evaluate job–candidate relevancy based on job details + resume + other info
+    - continue using this same conversation for future queries about this job
+
+    Returns:
+        dict | None: Parsed relevancy status object:
+            {
+                "relevancyPercentage": <number 0-100>,
+                "isRelevant": <bool>
+            }
+        or None on error.
+    """
     if not _user_detail_chat_id:
         print("No user_detail_chat_id found.")
         return None
@@ -249,7 +260,20 @@ def start_current_job_query_chat(job_details):
         return None
     print("Current job details chat id:", _current_job_chat_id)
     print("Updating AI context with Job Details.")
-    payload = f"Here is the job details I am applying for, respond future queries based on this and previously provided user details. \n{job_details}"
+    payload = (
+        "Here are the job details I am applying for. Based on these job details and the previously provided "
+        "user details (resume and any other info), evaluate how relevant this job is to the candidate.\n\n"
+        "This conversation will be used for future questions about this job, so update your internal context, "
+        "but respond NOW only with the JSON object described below.\n\n"
+        "Return ONLY a single JSON object with this exact structure and no extra text, comments, or explanations:\n"
+        "{\n"
+        '  \"relevancyPercentage\": <number from 0 to 100>,\n'
+        '  \"isRelevant\": <true or false>,\n'
+        '  \"reason\": \"<your judgement>\"\n'
+        "}\n\n"
+        "Use your best judgment for relevancyPercentage and isRelevant.\n\n"
+        f"JOB_DETAILS:\n{job_details}"
+    )
     try:
         client = get_openai_client()
         response = client.responses.create(
@@ -257,10 +281,14 @@ def start_current_job_query_chat(job_details):
             input=payload,
             previous_response_id=_user_detail_chat_id
         )
-        print("Job Details updated with AI feedback: ", response.output_text)
+
         set_current_job_chat_id(response.id)
         print("Current job details chat id:", _current_job_chat_id)
-        return response.id
+
+        raw_output = (response.output_text or "").strip()
+        print("Job relevancy status from AI (raw): ", raw_output)
+        relevancy_status = transform_to_object(raw_output)
+        return relevancy_status
     except Exception as e:
         print(f"Failed to send job_details to chat: {e}")
         return None

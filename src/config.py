@@ -6,6 +6,9 @@ from pathlib import Path
 JOB_KEYWORDS = "Java react"
 JOB_LOCATION = "Singapore"
 
+# Apply only relevant jobs on or above
+RELEVANCY_PERCENTAGE = 75
+
 # Exclude companies
 EXCLUDE_COMPANIES = []
 

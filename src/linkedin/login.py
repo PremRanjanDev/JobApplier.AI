@@ -11,29 +11,28 @@ def login(browser, save_login=False):
     print("Starting LinkedIn login process...")
     context_args = {"no_viewport": True}
     if os.path.exists(LINKEDIN_STATE_FILE):
-        print("LinkedIn session state file found. Restoring session...")
+        print("LinkedIn session state found, restoring...")
         context_args["storage_state"] = LINKEDIN_STATE_FILE
 
     page = browser.new_page(**context_args)
     print("Navigating to LinkedIn feed...")
     page.goto("https://www.linkedin.com/feed/")
 
-    current_url = page.url
-    if "/feed" in current_url:
-        print("Already logged in to LinkedIn.")
+    if "/feed" in page.url:
+        print("Already logged in.")
         return page, True
-    else:
-        print("Not logged in. Please log in manually in the opened browser window.")
-        page.goto("https://www.linkedin.com/login")
-        try:
-            page.wait_for_url("https://www.linkedin.com/feed/", timeout=120000)
-            print("Login successful.")
-            if save_login:
-                pathlib.Path(os.path.dirname(LINKEDIN_STATE_FILE)).mkdir(parents=True, exist_ok=True)
-                print("Saving state...")
-                page.context.storage_state(path=LINKEDIN_STATE_FILE)
-                print(f"Login state saved to {LINKEDIN_STATE_FILE}")
-            return page, True
-        except Exception as e:
-            print(f"Login failed or timed out: {e}")
-            return page, False
+
+    print("Not logged in. Please authenticate manually...")
+    page.goto("https://www.linkedin.com/login")
+
+    try:
+        page.wait_for_url("https://www.linkedin.com/feed/", timeout=120_000)
+        print("Login successful.")
+        if save_login:
+            pathlib.Path(os.path.dirname(LINKEDIN_STATE_FILE)).mkdir(parents=True, exist_ok=True)
+            page.context.storage_state(path=LINKEDIN_STATE_FILE)
+            print("Session saved.")
+        return page, True
+    except Exception as e:
+        print(f"Login failed: {e}")
+        return page, False

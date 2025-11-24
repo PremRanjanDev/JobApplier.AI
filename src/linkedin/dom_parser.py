@@ -268,6 +268,65 @@ def extract_step_controls(element):
     }''')
 
 
+def extract_hiring_team(job_details_section):
+    """Extract hiring team (recruiters) from a '.job-details-people-who-can-help' element.
+
+    Args:
+        job_details_section: Element for the hiring team container.
+
+    Returns:
+        list[dict]: Each recruiter:
+            {
+                "name": str,
+                "designation": str,
+                "isJobPoster": bool,
+                "messageButton": {
+                    "label": str,
+                    "selector": str,
+                    "isEnabled": bool,
+                } | None
+            }
+    """
+    recruiters = []
+    if not job_details_section:
+        return recruiters
+
+    cards = job_details_section.query_selector_all('div[class*="hirer-card__hirer-information"]')
+    if not cards:
+        return recruiters
+
+    for card in cards:
+        try:
+            name = card.query_selector(".jobs-poster__name").inner_text().strip()
+            designation = card.query_selector(".linked-area .text-body-small").inner_text().strip()
+            is_job_poster = "Job poster" in (card.inner_text() or "")
+            msg_btn_el = card.query_selector("button span:text('Message')")
+            message_button = None
+            if msg_btn_el:
+                label = (msg_btn_el.inner_text() or "").strip()
+                btn_id = msg_btn_el.get_attribute("id")
+                selector = f"button#{btn_id}" if btn_id else ".entry-point button.artdeco-button"
+                is_enabled = bool(getattr(msg_btn_el, "is_enabled", lambda: True)())
+                message_button = {
+                    "label": label,
+                    "selector": selector,
+                    "isEnabled": is_enabled,
+                }
+
+            recruiters.append(
+                {
+                    "name": name,
+                    "designation": designation,
+                    "isJobPoster": is_job_poster,
+                    "messageButton": message_button,
+                }
+            )
+        except Exception as e:
+            print(f"Failed to parse hiring team member: {e}")
+
+    return recruiters
+
+
 def form_state(form_info, form_fields):
     """Returns a hashable representation of the form's header and its fields/values."""
     return json.dumps({

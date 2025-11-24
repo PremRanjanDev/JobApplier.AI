@@ -1,4 +1,4 @@
-from ai.openai_provider import ask_text_from_ai, ask_select_from_ai
+from ai.openai_provider import ask_text_from_ai, ask_select_from_ai, ask_recruiter_message_from_ai
 from utils.user_data_manager import append_other_info
 from .cache_manager import get_from_cache, set_to_cache
 
@@ -21,6 +21,9 @@ def get_text_answer(question, validation=None):
     print(f"Answer: {answer}")
     return answer
 
+
+def get_recruiter_message(recruiter_name):
+    return ask_recruiter_message_from_ai(recruiter_name)
 
 def get_select_answer(question, options):
     """Return cached select answer if present (including empty string). Otherwise ask AI and cache result."""

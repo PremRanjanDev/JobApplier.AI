@@ -12,7 +12,7 @@ from utils.user_data_manager import get_changed_other_info, is_new_resume, get_r
 _user_detail_chat_id = None
 _current_job_chat_id = None
 
-tools = [
+parse_form_tools = [
     {
         "type": "function",
         "name": "parse_form",
@@ -99,11 +99,106 @@ def parse_form(html: str):
                 "content": f"Parse this HTML form and return the list of input fields in JSON:\n{html}"
             }
         ],
-        tools=tools
+        tools=parse_form_tools
     )
     print(response.output[0].arguments)
     parsed_fields = json.loads(response.output[0])
     return parsed_fields
+
+
+def parse_hiring_team(job_detail_html):
+    """
+    Sends a prompt to OpenAI's Responses API and returns hiring team details.
+    """
+    print("Parsing hiring team details using OpenAI...")
+    hiring_team_structure = {
+        "recruiters": [
+            {
+                "name": "str:<name of person>",
+                "designation": "str:<designation of person>",
+                "isJobPoster": "bool:<if indicates 'Job poster'>",
+                "messageButton": {
+                    "label": "str:<label of button>",
+                    "selector": "str:<selector of button>",
+                    "isEnabled": "bool:<if indicates 'enabled'>",
+                }
+            }
+        ]
+    }
+    client = get_openai_client()
+    response = client.responses.create(
+        model=OPENAI_MODEL,
+        input=f"""
+            Extract "Meet the hiring team" details from the HTML below and output JSON following this structure, return {{}} if not find "Meet the hiring team":
+            {json.dumps(hiring_team_structure, indent=2)}
+            Return valid JSON only. HTML:
+            {job_detail_html}
+            """
+    )
+    return transform_to_object(response.output_text).get("recruiters", [])
+
+
+def parse_message_form(msg_form_html):
+    """
+    Parsing message form using OpenAI
+    :param msg_form_html:
+    :return:
+    """
+    print("Parsing message form using OpenAI...")
+    msg_form_structure = {
+        "message_form": {
+            "id": "str:<form id>",
+            "headline": "str:<form headline>",
+            "fields": {
+                "subject": {
+                    "type": "str:<field type>",
+                    "label": "str:<field label>",
+                    "selector": "str:<field selector>",
+                    "value": "str:<field value>"
+                },
+                "body": {
+                    "type": "str:<field type>",
+                    "label": "str:<field label>",
+                    "selector": "str:<field selector>",
+                    "value": "str:<field value>"
+                }
+            },
+            "other_fields": [
+                {
+                    "type": "str:<field type>",
+                    "label": "str:<field label>",
+                    "selector": "str:<field selector>",
+                    "value": "str:<field value>"
+                }
+            ],
+            "controls": {
+                "send": {
+                    "label": "str:<label of button>",
+                    "selector": "str:<selector of button>",
+                    "isEnabled": "bool:<if indicates 'enabled'>"
+                }
+            },
+            "other_controls": [
+                {
+                    "label": "str:<label of button>",
+                    "selector": "str:<selector of button>",
+                    "isEnabled": "bool:<if indicates 'enabled'>"
+                }
+            ]
+        }
+
+    }
+    client = get_openai_client()
+    response = client.responses.create(
+        model=OPENAI_MODEL,
+        input=f"""
+            Parse message form details from the HTML below and output JSON following this structure, return {{}} if not find message form:
+            {json.dumps(msg_form_structure, indent=2)}
+            Return valid JSON only. HTML:
+            {msg_form_html}
+            """
+    )
+    return transform_to_object(response.output_text).get("message_form", {})
 
 
 def start_conversation(instruction):
@@ -153,6 +248,46 @@ def ask_select_from_ai(question, options):
         previous_response_id=_current_job_chat_id or _user_detail_chat_id
     )
     return response.output_text
+
+
+def ask_recruiter_message_from_ai(recruiter_name: str) -> dict:
+    """
+    Request a recruiter outreach message from the OpenAI model.
+
+    Returns a JSON dict in the format:
+    {
+        "subject": "<subject line>",
+        "message": "<message body>"
+    }
+
+    Returns {} if any error occurs or if parsing fails.
+    """
+    print("Getting recruiter message from OpenAI...")
+
+    prompt = f'''
+        I have applied the role, write a concise LinkedIn message to recruiter "{recruiter_name}", saying how am I a good fit highlighting relevant skills.
+        Return ONLY valid JSON:
+        {{
+          "subject": "...",
+          "message": "..."
+        }}
+        Guidelines:
+        - No pre/post text or formatting except newlines (if required) in body.
+        '''
+
+    try:
+        client = get_openai_client()
+
+        response = client.responses.create(
+            model=OPENAI_MODEL,
+            input=prompt,
+            previous_response_id=_current_job_chat_id or _user_detail_chat_id,
+        )
+
+        return transform_to_object(response.output_text)
+    except Exception as e:
+        print(f"Failed to get recruiter message: {e}")
+        return {}
 
 
 def ask_linkedin_connection_note_from_ai(job_title, company_name, recruiter_name):

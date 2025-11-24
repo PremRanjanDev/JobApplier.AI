@@ -1,5 +1,6 @@
-from ai.openai_provider import start_current_job_query_chat
+from ai.openai_provider import parse_hiring_team, start_current_job_query_chat, parse_message_form
 from config import EXCLUDE_COMPANIES, RELEVANCY_PERCENTAGE
+from utils.qna_manager import get_recruiter_message
 from .constants import timeout_1s, timeout_2s, timeout_5s
 from .dom_parser import (
     extract_form_fields,
@@ -118,12 +119,57 @@ def apply_job(page, job):
 
         easy_apply_btn_or_msg.click()
         page.wait_for_timeout(timeout_1s)
-        return handle_application_form(page)
+        status, message = handle_application_form(page)
+        # if status and MESSAGE_RECRUITER:
+        #     print("Job applied, messaging recruiter...")
+        #     rcr_status, rcr_msg = message_recruiter(page, job_details_section)
+        #     print(f"Recruiter message status: {rcr_status}, message: {rcr_msg}")
+
+        return status, message
 
     except Exception as e:
         print(f"Error applying to job {getattr(job, 'title', 'Unknown')}: {e}")
         dismiss_job_apply(page, None)
         return False, str(e)
+
+
+def message_recruiter(page, job_details_section):
+    hiring_team = parse_hiring_team(job_details_section.inner_html())
+    if not hiring_team:
+        return False, "No hiring team found"
+    recruiter = next((r for r in hiring_team if r.get('isJobPoster')), hiring_team[0])
+    recruiter_name = recruiter.get('name')
+    if not recruiter_name:
+        return False, "Failed to get recruiter name"
+    recruiter_message = get_recruiter_message(recruiter_name)
+    if not recruiter_message:
+        return False, "Failed to get recruiter message"
+    print(f"Sending message to recruiter {recruiter_name}: {recruiter_message}")
+    msg_button_selector = recruiter.get('messageButton', {}).get('selector')
+    if not msg_button_selector:
+        return False, "Failed to get message button selector"
+    msg_button = job_details_section.query_selector(msg_button_selector)
+    if not msg_button:
+        return False, "Failed to find message button"
+    msg_button.click()
+    msg_form_el = page.query_selector('form[class*="msg-form"]')
+    msg_form = parse_message_form(msg_form_el.inner_html())
+    input_sub_selector = msg_form.get("fields", {}).get('subject', {}).get('selector')
+    if input_sub_selector:
+        subject_input = msg_form_el.query_selector(input_sub_selector)
+        subject_input.type(recruiter_message.get("subject", ''), delay=2)
+
+    input_body_selector = msg_form.get("fields", {}).get('body', {}).get('selector')
+    if input_body_selector:
+        body_input = msg_form_el.query_selector(input_body_selector)
+        body_input.type(recruiter_message.get("message", ''), delay=2)
+
+    send_selector = msg_form.get("controls", {}).get('send', {}).get('selector')
+    if send_selector:
+        send_btn = msg_form_el.query_selector(send_selector)
+        send_btn.click()
+
+    return True, hiring_team
 
 
 def dismiss_job_apply(page, application_form, step_controls=None):

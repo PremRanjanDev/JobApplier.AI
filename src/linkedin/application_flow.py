@@ -1,6 +1,6 @@
 from ai.openai_provider import parse_hiring_team, start_current_job_query_chat, parse_message_form
-from config import EXCLUDE_COMPANIES, RELEVANCY_PERCENTAGE
-from utils.qna_manager import get_recruiter_message
+from config import EXCLUDE_COMPANIES, RELEVANCY_PERCENTAGE, CONNECT_RECRUITER, MESSAGE_RECRUITER
+from utils.qna_manager import get_recruiter_message, get_recruiter_connect_note
 from .constants import timeout_1s, timeout_2s, timeout_5s
 from .dom_parser import (
     extract_form_fields,
@@ -43,6 +43,8 @@ def handle_application_form(page):
             return False, "Application form not found"
 
         moved, frm_state_or_msg = process_form_step(page, application_form, previous_state)
+        if frm_state_or_msg == 'applied':
+            return True, frm_state_or_msg
         if not moved:
             return False, frm_state_or_msg
         page.wait_for_timeout(timeout_1s)
@@ -51,7 +53,11 @@ def handle_application_form(page):
 
 def process_form_step(page, application_form, previous_state):
     """Processes a single step of the application form."""
+    page.wait_for_timeout(timeout_2s)
     form_info = extract_form_info(application_form)
+    if "Application sent" == form_info.get("header"):
+        dismiss_job_apply(page, application_form)
+        return True, "applied"
     form_fields = extract_form_fields(application_form)
     print(
         f"Extracted form. header: {form_info['header']}, progress: {form_info['progress']}"
@@ -96,34 +102,40 @@ def apply_job(page, job):
         if not click_job_card(page, job):
             return False, "Failed to click job card"
 
-        page.wait_for_timeout(timeout_1s)
+        page.wait_for_timeout(timeout_2s)
         job_details_section = page.wait_for_selector(
             'div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"]',
             timeout=timeout_5s,
         )
         job_details = extract_job_details(job_details_section)
         print(f"Job details: {job_details}")
-        company = (job_details['company'] or "").lower()
+        company = job_details.get('company', "").lower()
+        if not company or not job_details.get('title') or not job_details.get('description'):
+            print(f"Skipping {company} due to missing details")
+            return False, "Missing job details"
         if EXCLUDE_COMPANIES and any(excluded.lower() in company for excluded in EXCLUDE_COMPANIES):
             print(f"Skipping {company} due to EXCLUDE_COMPANIES")
-            return False, f"Excluded company '{job_details['company']}'"
+            return False, f"Excluded company '{company}'"
 
         is_open, easy_apply_btn_or_msg = find_easy_apply_button(job_details_section)
         if not is_open:
             return False, easy_apply_btn_or_msg
 
         relevancy_status = start_current_job_query_chat(job_details)
+        relevancy_percentage = relevancy_status.get("relevancyPercentage", 0)
         print(f"Relevancy status: {relevancy_status}")
-        if relevancy_status.get("relevancyPercentage", 0) < RELEVANCY_PERCENTAGE:
+        if relevancy_percentage < RELEVANCY_PERCENTAGE:
             return False, "Job not relevant"
 
         easy_apply_btn_or_msg.click()
         page.wait_for_timeout(timeout_1s)
         status, message = handle_application_form(page)
-        # if status and MESSAGE_RECRUITER:
-        #     print("Job applied, messaging recruiter...")
-        #     rcr_status, rcr_msg = message_recruiter(page, job_details_section)
-        #     print(f"Recruiter message status: {rcr_status}, message: {rcr_msg}")
+        if status:
+            print("Job applied successfully!")
+            if CONNECT_RECRUITER or MESSAGE_RECRUITER:
+                print("Contacting recruiter...")
+                rcr_status, rcr_msg = contact_recruiter(page, job_details_section)
+                print(f"Recruiter contact status: {rcr_status}, message: {rcr_msg}")
 
         return status, message
 
@@ -133,11 +145,79 @@ def apply_job(page, job):
         return False, str(e)
 
 
-def message_recruiter(page, job_details_section):
+def contact_recruiter(page, job_details_section):
     hiring_team = parse_hiring_team(job_details_section.inner_html())
     if not hiring_team:
         return False, "No hiring team found"
     recruiter = next((r for r in hiring_team if r.get('isJobPoster')), hiring_team[0])
+
+    if CONNECT_RECRUITER:
+        print("Connecting to recruiter...")
+        return connect_recruiter(page, recruiter)
+
+    if MESSAGE_RECRUITER:
+        print("Message recruiter...")
+        return message_recruiter(page, recruiter, job_details_section)
+
+    return False, "No connect or message action specified"
+
+
+def connect_recruiter(page, recruiter):
+    new_tab = None
+    try:
+        recruiter_name = recruiter.get('name')
+        if not recruiter_name:
+            return False, "Failed to get recruiter name"
+        print(f"Connecting to recruiter {recruiter_name}")
+        profile_link = recruiter.get('profileLink')
+        if not profile_link:
+            return False, "Failed to get recruiter profile link"
+        new_tab = page.context.new_page()
+        new_tab.goto(profile_link)
+        connect_button = new_tab.query_selector('button[aria-label^="Connect"]', timeout=timeout_5s)
+        if not connect_button:
+            more_button = new_tab.query_selector('button[aria-label^="More"]', timeout=timeout_5s)
+            if not more_button:
+                return False, "Failed to find connect or more button"
+            more_button.click()
+            connect_button = new_tab.query_selector('button[aria-label^="Connect"]')
+        if not connect_button:
+            return False, "Failed to find connect button"
+        connect_button.click()
+        page.wait_for_timeout(timeout_2s)
+        invite_model = page.query_selector('div[class*="send-invite"], div[class*="send-invite-modal"]')
+        add_note_button = invite_model.query_selector(
+            'button[aria-label^="Add a note"], button[aria-label^="Add note"]')
+        if not add_note_button:
+            return False, "Failed to find add note button"
+        add_note_button.click()
+        page.wait_for_timeout(timeout_2s)
+        add_note_input = invite_model.query_selector('textarea[aria-label^="Add a note"]')
+        if not add_note_input:
+            return False, "Failed to find add note button"
+        add_note_button.click()
+        page.wait_for_timeout(timeout_2s)
+        note_input = invite_model.query_selector('textarea[name="message"], textarea[class*="message"]')
+        if not note_input:
+            return False, "Failed to find note input"
+        connection_note = get_recruiter_connect_note(recruiter_name)
+        if not connection_note:
+            return False, "Failed to get recruiter connection note"
+        note_input.type(connection_note, delay=2)
+        send_button = invite_model.query_selector('button[aria-label^="Send"]')
+        if not send_button:
+            return False, "Failed to find send button"
+        send_button.click()
+        page.wait_for_timeout(timeout_2s)
+        return True, "Connected to recruiter"
+    except Exception as e:
+        if new_tab:
+            new_tab.close()
+            print(f"Failed to connect to recruiter: {e}")
+        return False, "Failed to connect to recruiter"
+
+
+def message_recruiter(page, recruiter, job_details_section):
     recruiter_name = recruiter.get('name')
     if not recruiter_name:
         return False, "Failed to get recruiter name"
@@ -152,6 +232,7 @@ def message_recruiter(page, job_details_section):
     if not msg_button:
         return False, "Failed to find message button"
     msg_button.click()
+    page.wait_for_timeout(timeout_2s)
     msg_form_el = page.query_selector('form[class*="msg-form"]')
     msg_form = parse_message_form(msg_form_el.inner_html())
     input_sub_selector = msg_form.get("fields", {}).get('subject', {}).get('selector')
@@ -165,11 +246,14 @@ def message_recruiter(page, job_details_section):
         body_input.type(recruiter_message.get("message", ''), delay=2)
 
     send_selector = msg_form.get("controls", {}).get('send', {}).get('selector')
-    if send_selector:
-        send_btn = msg_form_el.query_selector(send_selector)
-        send_btn.click()
+    if not send_selector:
+        return False, "Failed to find send button selector"
+    send_btn = msg_form_el.query_selector(send_selector)
+    if not send_btn or not send_btn.is_enabled():
+        return False, "Failed to find send button"
+    send_btn.click()
 
-    return True, hiring_team
+    return True, "Message sent"
 
 
 def dismiss_job_apply(page, application_form, step_controls=None):

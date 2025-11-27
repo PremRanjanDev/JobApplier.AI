@@ -14,7 +14,8 @@ def login(browser, save_login=False):
         print("LinkedIn session state found, restoring...")
         context_args["storage_state"] = LINKEDIN_STATE_FILE
 
-    page = browser.new_page(**context_args)
+    context = browser.new_context(**context_args)
+    page = context.new_page()
     print("Navigating to LinkedIn feed...")
     page.goto("https://www.linkedin.com/feed/")
 

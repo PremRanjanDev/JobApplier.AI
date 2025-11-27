@@ -34,7 +34,7 @@ def apply_jobs_easy_apply(page, keywords, location):
             if applied:
                 jobs_applied += 1
                 print("Successfully applied: ", jobs_applied)
-            elif "Easy Apply limit" in status:
+            elif "limit" in status:
                 print(f"Alert: {status}\nEasy Apply limit reached. Stopping application process!!")
                 update_run_data_job_applications(job_application_id,
                                                  keywords,

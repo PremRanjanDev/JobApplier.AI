@@ -7,7 +7,7 @@ JOB_KEYWORDS = "Java react"
 JOB_LOCATION = "Singapore"
 
 # Apply only relevant jobs on or above
-RELEVANCY_PERCENTAGE = 80
+RELEVANCY_PERCENTAGE = 85
 
 # Exclude companies
 EXCLUDE_COMPANIES = []

@@ -17,6 +17,14 @@ def get_run_data():
     """ Return the entire run_data dict. """
     return _run_data
 
+
+def save_run_data():
+    try:
+        with open(RUN_DATA_FILE, "w", encoding="utf-8") as f:
+            json.dump(_run_data, f, indent=4)
+    except Exception as e:
+        print(f"Failed to save run data: {e}")
+
 def update_run_data_udc(user_detail_chat_id, prop_key: str, value: dict):
     """
     Update run_data['user_detail_chat'] at nested path specified by propKey.
@@ -31,9 +39,8 @@ def update_run_data_udc(user_detail_chat_id, prop_key: str, value: dict):
         udc["modal"] = OPENAI_MODEL
         udc["last_updated_at"] = now_iso
         udc[prop_key] = value
-        
-        with open(RUN_DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(_run_data, f, indent=4)
+
+        save_run_data()
     except Exception as e:
         print(f"Failed to write run data: {e}")
 
@@ -76,8 +83,7 @@ def update_run_data_job_applications(id, keywords, location, last_page, applied=
         elif last_status:
             entry[last_status] = entry.get(last_status, 0) + 1
 
-        with open(RUN_DATA_FILE, "w", encoding="utf-8") as f:
-            json.dump(_run_data, f, indent=4)
+        save_run_data()
     except Exception as e:
         print(f"Failed to write run data: {e}")
 

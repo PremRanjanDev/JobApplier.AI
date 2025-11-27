@@ -116,6 +116,7 @@ def parse_hiring_team(job_detail_html):
             {
                 "name": "str:<name of person>",
                 "designation": "str:<designation of person>",
+                "profileLink": "str:<profile link of person>",
                 "isJobPoster": "bool:<if indicates 'Job poster'>",
                 "messageButton": {
                     "label": "str:<label of button>",
@@ -289,6 +290,22 @@ def ask_recruiter_message_from_ai(recruiter_name: str) -> dict:
         print(f"Failed to get recruiter message: {e}")
         return {}
 
+
+def ask_recruiter_connect_note_from_ai(recruiter_name: str) -> str:
+    """
+    Request a recruiter connection note from the OpenAI model.
+    Returns a string connection note within 300 characters.
+    :param recruiter_name:
+    :return: string message
+    """
+    print("Getting recruiter connection note from OpenAI...")
+    client = get_openai_client()
+    response = client.responses.create(
+        model=OPENAI_MODEL,
+        input=f"""I have applied the role and sending connection request to the recruiter. Write a LinkedIn connection request note for recruiter: {recruiter_name}, keep it within 300 characters.""",
+        previous_response_id=_current_job_chat_id or _user_detail_chat_id,
+    )
+    return response.output_text.strip()
 
 def ask_linkedin_connection_note_from_ai(job_title, company_name, recruiter_name):
     """Call OpenAI to generate a LinkedIn connection note."""

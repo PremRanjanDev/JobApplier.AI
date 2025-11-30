@@ -3,12 +3,13 @@ import os.path
 
 from openai import OpenAI
 
-from config import OPENAI_KEY_FILE, OTHER_INFO_FILE, OTHER_INFO_TRAINED_FILE, OPENAI_MODEL
+from config import get_openai_key, OTHER_INFO_FILE, OTHER_INFO_TRAINED_FILE, OPENAI_MODEL
 from utils.common_utils import last_modified_iso, transform_to_object
 from utils.run_data_manager import get_run_data, update_run_data_udc
 from utils.txt_utils import append_txt_records
-from utils.user_data_manager import get_changed_other_info, is_new_resume, get_resume_file, remove_from_other_info
+from utils.user_data_manager import get_changed_other_info, remove_from_other_info, get_resume_file, is_new_resume
 
+_openai_client = None
 _user_detail_chat_id = None
 _current_job_chat_id = None
 
@@ -69,16 +70,21 @@ parse_form_tools = [
     }
 ]
 
-def get_openai_client():
-    """Returns an OpenAI client using the API key from file."""
+
+def _get_openai_client():
+    """Returns a cached OpenAI client using the API key from config."""
+    global _openai_client
+    if _openai_client is not None:
+        return _openai_client
+
     try:
-        with open(OPENAI_KEY_FILE, 'r') as f:
-            openai_api_key = f.read().strip()
+        openai_api_key = get_openai_key()
         if not openai_api_key:
-            raise RuntimeError(f"OpenAI API key not found in {OPENAI_KEY_FILE}")
-        return OpenAI(api_key=openai_api_key)
+            raise RuntimeError("OpenAI API key is empty or not configured")
+        _openai_client = OpenAI(api_key=openai_api_key)
+        return _openai_client
     except Exception as e:
-        raise RuntimeError(f"Error reading OpenAI API key: {e}")
+        raise RuntimeError(f"Error getting OpenAI API key: {e}")
 
 
 def parse_form(html: str):
@@ -86,7 +92,7 @@ def parse_form(html: str):
     Sends a prompt to OpenAI's Responses API and returns the parsed fields.
     """
     print("Sending prompt to OpenAI...")
-    client = get_openai_client()
+    client = _get_openai_client()
     response = client.responses.create(
         model=OPENAI_MODEL,
         input=[
@@ -126,7 +132,7 @@ def parse_hiring_team(job_detail_html):
             }
         ]
     }
-    client = get_openai_client()
+    client = _get_openai_client()
     response = client.responses.create(
         model=OPENAI_MODEL,
         input=f"""
@@ -189,7 +195,7 @@ def parse_message_form(msg_form_html):
         }
 
     }
-    client = get_openai_client()
+    client = _get_openai_client()
     response = client.responses.create(
         model=OPENAI_MODEL,
         input=f"""
@@ -207,7 +213,7 @@ def start_conversation(instruction):
     Starts a conversation with OpenAI's Responses API and returns the conversation ID.
     """
     print("Starting conversation with OpenAI...")
-    client = get_openai_client()
+    client = _get_openai_client()
     response = client.responses.create(
         model=OPENAI_MODEL,
         input=instruction,
@@ -228,7 +234,7 @@ def ask_text_from_ai(question, validation=None):
     if validation:
         question = f"{question.strip()}{validation}"
     print("Getting answer from OpenAI...")
-    client = get_openai_client()
+    client = _get_openai_client()
     response = client.responses.create(
         model=OPENAI_MODEL,
         input=question,
@@ -240,7 +246,7 @@ def ask_text_from_ai(question, validation=None):
 def ask_select_from_ai(question, options):
     """Call OpenAI to choose an option."""
     print("Getting select answer from OpenAI...")
-    client = get_openai_client()
+    client = _get_openai_client()
     response = client.responses.create(
         model=OPENAI_MODEL,
         input=f"""Select an option for: {question} 
@@ -277,8 +283,7 @@ def ask_recruiter_message_from_ai(recruiter_name: str) -> dict:
         '''
 
     try:
-        client = get_openai_client()
-
+        client = _get_openai_client()
         response = client.responses.create(
             model=OPENAI_MODEL,
             input=prompt,
@@ -299,7 +304,7 @@ def ask_recruiter_connect_note_from_ai(recruiter_name: str) -> str:
     :return: string message
     """
     print("Getting recruiter connection note from OpenAI...")
-    client = get_openai_client()
+    client = _get_openai_client()
     response = client.responses.create(
         model=OPENAI_MODEL,
         input=f"""I have applied the role and sending connection request to the recruiter. Write a LinkedIn connection request note for recruiter: {recruiter_name}, use first name. Keep the note within 300 characters.""",
@@ -310,7 +315,7 @@ def ask_recruiter_connect_note_from_ai(recruiter_name: str) -> str:
 def ask_linkedin_connection_note_from_ai(job_title, company_name, recruiter_name):
     """Call OpenAI to generate a LinkedIn connection note."""
     print("Getting LinkedIn connection note from OpenAI...")
-    client = get_openai_client()
+    client = _get_openai_client()
     response = client.responses.create(
         model=OPENAI_MODEL,
         input=f"""Write a LinkedIn connection request note for recruiter: {recruiter_name} 
@@ -322,7 +327,7 @@ def ask_linkedin_connection_note_from_ai(job_title, company_name, recruiter_name
 def upload_resume_and_start_chat(file_path):
     """ Uploads resume file and starts a new conversation. Returns the conversation ID. """
     print("Uploading resume and starting new conversation...")
-    client = get_openai_client()
+    client = _get_openai_client()
     with open(file_path, "rb") as fh:
         uploaded_file = client.files.create(file=fh, purpose="user_data")
 
@@ -372,7 +377,7 @@ def send_other_info_to_chat(previous_chat_id, qnas_dict):
     prompt = "Here are some updated details, please update your information accordingly and respond based on updated data for future questions."
     payload = f"{prompt}\n" + "\n - ".join(qnas)
     try:
-        client = get_openai_client()
+        client = _get_openai_client()
         response = client.responses.create(
             model=OPENAI_MODEL,
             input=payload,
@@ -428,7 +433,7 @@ def start_current_job_query_chat(job_details):
         f"JOB_DETAILS:\n{job_details}"
     )
     try:
-        client = get_openai_client()
+        client = _get_openai_client()
         response = client.responses.create(
             model=OPENAI_MODEL,
             input=payload,
@@ -491,7 +496,7 @@ def ask_openai(prompt: str):
     Sends a prompt to OpenAI's Responses API and returns the raw output text.
     """
     print("Sending prompt to OpenAI...")
-    client = get_openai_client()
+    client = _get_openai_client()
     response = client.responses.create(
         model=OPENAI_MODEL,
         input=prompt

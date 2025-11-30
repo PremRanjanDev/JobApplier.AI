@@ -10,6 +10,10 @@ def _load_run_data():
     try:
         with open(RUN_DATA_FILE, 'r') as f:
             _run_data = json.load(f)
+
+        ja_list = _run_data.get("job_applications")
+        if isinstance(ja_list, list) and len(ja_list) > 10:
+            _run_data["job_applications"] = ja_list[:10]
     except Exception as e:
         print(f"Failed to load run data: {e}")
 

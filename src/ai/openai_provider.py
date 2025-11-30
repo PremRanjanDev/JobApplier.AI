@@ -302,7 +302,7 @@ def ask_recruiter_connect_note_from_ai(recruiter_name: str) -> str:
     client = get_openai_client()
     response = client.responses.create(
         model=OPENAI_MODEL,
-        input=f"""I have applied the role and sending connection request to the recruiter. Write a LinkedIn connection request note for recruiter: {recruiter_name}, keep it within 300 characters.""",
+        input=f"""I have applied the role and sending connection request to the recruiter. Write a LinkedIn connection request note for recruiter: {recruiter_name}, use first name. Keep the note within 300 characters.""",
         previous_response_id=_current_job_chat_id or _user_detail_chat_id,
     )
     return response.output_text.strip()
@@ -419,9 +419,10 @@ def start_current_job_query_chat(job_details):
         "but respond NOW only with the JSON object described below.\n\n"
         "Return ONLY a single JSON object with this exact structure and no extra text, comments, or explanations:\n"
         "{\n"
-        '  \"relevancyPercentage\": <number from 0 to 100>,\n'
-        '  \"isRelevant\": <true or false>,\n'
-        '  \"reason\": \"<your judgement>\"\n'
+        '  \"relevancyPercentage\": number<number from 0 to 100>,\n'
+        '  \"isRelevant\": boolean <true or false>,\n'
+        '  \"match\": \"str <Key things which matched, in short>,\"\n'
+        '  \"mismatch\": \"str <Key things which mismatched, in short>\"\n'
         "}\n\n"
         "Use your best judgment for relevancyPercentage and isRelevant.\n\n"
         f"JOB_DETAILS:\n{job_details}"

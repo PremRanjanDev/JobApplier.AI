@@ -174,47 +174,47 @@ def connect_recruiter(page, recruiter):
             return False, "Failed to get recruiter profile link"
         new_tab = page.context.new_page()
         new_tab.goto(profile_link)
-        connect_button = new_tab.query_selector('button[aria-label^="Connect"]', timeout=timeout_5s)
+        new_tab.wait_for_timeout(timeout_5s)
+        main_section = new_tab.query_selector('main section')
+        connect_button = main_section.query_selector('button:has-text("Connect")')
         if not connect_button:
-            more_button = new_tab.query_selector('button[aria-label^="More"]', timeout=timeout_5s)
+            more_button = main_section.query_selector('button:has-text("More")')
             if not more_button:
                 return False, "Failed to find connect or more button"
             more_button.click()
-            connect_button = new_tab.query_selector('button[aria-label^="Connect"]')
+            connect_button = main_section.query_selector('div[class*="dropdown"] span:has-text("Connect")')
         if not connect_button:
             return False, "Failed to find connect button"
         connect_button.click()
-        page.wait_for_timeout(timeout_2s)
-        invite_model = page.query_selector('div[class*="send-invite"], div[class*="send-invite-modal"]')
-        add_note_button = invite_model.query_selector(
-            'button[aria-label^="Add a note"], button[aria-label^="Add note"]')
+        new_tab.wait_for_timeout(timeout_2s)
+        invite_model = new_tab.query_selector('div[class*="send-invite"], div[class*="send-invite-modal"]')
+        add_note_button = invite_model.query_selector('button:has-text("Add a note")')
         if not add_note_button:
             return False, "Failed to find add note button"
         add_note_button.click()
-        page.wait_for_timeout(timeout_2s)
-        add_note_input = invite_model.query_selector('textarea[aria-label^="Add a note"]')
+        new_tab.wait_for_timeout(timeout_2s)
+        add_note_input = invite_model.query_selector('textarea[name="message"]')
         if not add_note_input:
             return False, "Failed to find add note button"
-        add_note_button.click()
-        page.wait_for_timeout(timeout_2s)
-        note_input = invite_model.query_selector('textarea[name="message"], textarea[class*="message"]')
-        if not note_input:
+        if not add_note_input:
             return False, "Failed to find note input"
         connection_note = get_recruiter_connect_note(recruiter_name)
         if not connection_note:
             return False, "Failed to get recruiter connection note"
-        note_input.type(connection_note, delay=2)
-        send_button = invite_model.query_selector('button[aria-label^="Send"]')
+        add_note_input.type(connection_note, delay=2)
+        new_tab.wait_for_timeout(timeout_1s)
+        send_button = invite_model.query_selector('button:has-text("Send")')
         if not send_button:
             return False, "Failed to find send button"
         send_button.click()
-        page.wait_for_timeout(timeout_2s)
+        new_tab.wait_for_timeout(timeout_2s)
         return True, "Connected to recruiter"
     except Exception as e:
+        print(f"Failed to connect to recruiter: {e}")
+        return False, "Failed to connect to recruiter"
+    finally:
         if new_tab:
             new_tab.close()
-            print(f"Failed to connect to recruiter: {e}")
-        return False, "Failed to connect to recruiter"
 
 
 def message_recruiter(page, recruiter, job_details_section):

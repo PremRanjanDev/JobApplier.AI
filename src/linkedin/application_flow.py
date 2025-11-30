@@ -195,8 +195,6 @@ def connect_recruiter(page, recruiter):
         new_tab.wait_for_timeout(timeout_2s)
         add_note_input = invite_model.query_selector('textarea[name="message"]')
         if not add_note_input:
-            return False, "Failed to find add note button"
-        if not add_note_input:
             return False, "Failed to find note input"
         connection_note = get_recruiter_connect_note(recruiter_name)
         if not connection_note:

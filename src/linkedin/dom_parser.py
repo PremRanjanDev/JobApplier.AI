@@ -70,16 +70,16 @@ def extract_form_info(element):
     }''')
 
 
-def extract_form_fields(element):
+def extract_form_fields(form_element):
     """Extracts input fields from the Easy Apply modal.
 
     Args:
-        element: The modal element to extract fields from
+        form_element: The modal element to extract fields from
         
     Returns:
         Array: Fields
     """
-    return element.evaluate('''(modal) => {
+    return form_element.evaluate('''(modal) => {
 
         const getFieldError = (element) => {
             const errorId = element.getAttribute('aria-describedby');
@@ -140,7 +140,7 @@ def extract_form_fields(element):
             else if (element.matches('input[type="text"]:not([role="combobox"]), input[type="email"], input[type="tel"], textarea')) {
                 fieldData = {
                     type: 'text',
-                    label: element.labels?.[0]?.querySelector('span[aria-hidden="true"]')?.textContent.trim() || element.labels?.[0]?.innerText.trim() || '',
+                    label: element.labels?.[0]?.querySelector('span[aria-hidden="true"]')?.textContent.trim() || element.labels?.[0]?.innerText?.trim() || '',
                     selector: '#' + element.id,
                     value: element.value || ''
                 };
@@ -269,7 +269,7 @@ def extract_step_controls(element):
 
 
 def extract_hiring_team(job_details_section):
-    """Extract hiring team (recruiters) from a '.job-details-people-who-can-help' element.
+    """Extract a hiring team (recruiters) from a '.job-details-people-who-can-help' element.
 
     Args:
         job_details_section: Element for the hiring team container.

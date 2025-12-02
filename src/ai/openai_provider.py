@@ -74,7 +74,7 @@ parse_form_tools = [
 def _get_openai_client():
     """Returns a cached OpenAI client using the API key from config."""
     global _openai_client
-    if _openai_client is not None:
+    if _openai_client:
         return _openai_client
 
     try:

@@ -176,13 +176,14 @@ def connect_recruiter(page, recruiter):
         new_tab.goto(profile_link)
         new_tab.wait_for_timeout(timeout_5s)
         main_section = new_tab.query_selector('main section')
-        connect_button = main_section.query_selector('button:has-text("Connect")')
+        connect_button = main_section.query_selector('button:text-is("Connect")')
         if not connect_button:
-            more_button = main_section.query_selector('button:has-text("More")')
+            more_button = main_section.query_selector('button:text-is("More")')
             if not more_button:
                 return False, "Failed to find connect or more button"
             more_button.click()
-            connect_button = main_section.query_selector('div[class*="dropdown"] span:has-text("Connect")')
+            new_tab.wait_for_timeout(timeout_1s)
+            connect_button = main_section.query_selector('div[class*="dropdown"] span:text-is("Connect")')
         if not connect_button:
             return False, "Failed to find connect button"
         connect_button.click()

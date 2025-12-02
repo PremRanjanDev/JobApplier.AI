@@ -22,14 +22,18 @@ def fill_all_fields(page, input_fields, has_errors: bool = False):
 
 def enter_text_field(page, input_field):
     """Enters text into a text field based on the provided input_field."""
-    print("Filling text field:", input_field["label"])
-    selector = input_field["selector"]
-    current_value = input_field["value"]
-    error = input_field.get("error", None)
+    label = input_field.get("label")
+    print("Filling text field:", label)
+    if not label:
+        print("No label found for text field")
+        return
+    selector = input_field.get("selector")
+    current_value = input_field.get("value", "")
+    error = input_field.get("error")
     if error and not current_value:
         print(f"Field has error '{error}' but no current value. Skipping...")
         return
-    new_value = get_text_answer(input_field["label"], error)
+    new_value = get_text_answer(input_field.get("label"), error)
     if new_value and new_value != current_value:
         if current_value:
             page.fill(selector, "")
@@ -40,11 +44,15 @@ def enter_text_field(page, input_field):
 
 def select_option(page, field_info):
     """Select an option for dropdown or radio group based on the provided field_info."""
-    print("Selecting option for field:", field_info["label"])
-    selector = field_info["selector"]
+    label = field_info.get("label")
+    print("Selecting option for field:", label)
+    if not label:
+        print("No label found for select field")
+        return
+    selector = field_info.get("selector")
     options = field_info.get("options", [])
-    label = field_info.get("label", "")
-    current_value = field_info["value"]
+
+    current_value = field_info.get("value", "")
     temp_options = [
         opt["label"] for opt in options if opt["label"].lower() != "select an option"
     ]
@@ -67,14 +75,14 @@ def select_option(page, field_info):
             page,
             selected_option["selector"],
             selector,
-            selected_option.get("value"),
+            selected_option.get("value", ""),
         )
         page.wait_for_timeout(timeout_1s)
 
 
 def select_control(page, option_selector, field_selector, option_value=None):
     """Try multiple strategies to select an option (dropdown, radio, checkbox)."""
-    if option_value is not None:
+    if option_value:
         try:
             page.select_option(field_selector, option_value, timeout=timeout_2s)
             print(f"select_option used for {field_selector} with value {option_value}")
@@ -107,9 +115,12 @@ def select_control(page, option_selector, field_selector, option_value=None):
 
 def fill_combobox(page, field_info):
     """Fills out a combobox (autocomplete) field based on the provided field_info."""
-    print("Filling combobox field:", field_info["label"])
-    selector = field_info["selector"]
-    label = field_info.get("label", "")
+    label = field_info.get("label")
+    print("Filling combobox field:", label)
+    if not label:
+        print("No label found for combobox field")
+        return
+    selector = field_info.get("selector")
     current_value = field_info.get("value", "")
     new_value = get_text_answer(label)
 

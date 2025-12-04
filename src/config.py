@@ -38,7 +38,7 @@ RESUME_FOLDER = MY_DATA_DIR / "resume"
 # System data paths
 CACHE_FILE = SYS_DATA_DIR / "qnas_cache.json"
 RUN_DATA_FILE = SYS_DATA_DIR / "run_data.json"
-OTHER_INFO_TRAINED_FILE = SYS_DATA_DIR / "other_info_trained.txt"
+TRAINED_DATA_FILE = SYS_DATA_DIR / "trained-data.txt"
 LINKEDIN_STATE_FILE = SYS_DATA_DIR / "login" / "linkedin_state.json"
 
 # API Keys (prefer environment variables)

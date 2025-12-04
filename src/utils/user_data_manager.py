@@ -1,6 +1,6 @@
 import os
 
-from config import OTHER_INFO_FILE, OTHER_INFO_TRAINED_FILE, RESUME_FOLDER, OPENAI_MODEL
+from config import OTHER_INFO_FILE, TRAINED_DATA_FILE, RESUME_FOLDER, OPENAI_MODEL
 from utils.cache_manager import remove_by_ques_from_cache, get_full_qna_cache
 from utils.common_utils import last_modified_iso
 from utils.run_data_manager import get_run_data
@@ -55,7 +55,7 @@ def get_changed_other_info(user_detail_chat, is_new_conv=False):
     
     changed = {}
     qna_cache = get_full_qna_cache()
-    _, other_info_trained_qnas = parse_other_info_qnas(OTHER_INFO_TRAINED_FILE)
+    _, other_info_trained_qnas = parse_other_info_qnas(TRAINED_DATA_FILE)
     for user_q, user_a in _other_info.items():
         cache_a = qna_cache.get(user_q)
         if (user_a

@@ -4,7 +4,7 @@ import sys
 
 from openai import OpenAI
 
-from config import get_openai_key, OTHER_INFO_FILE, OTHER_INFO_TRAINED_FILE, OPENAI_MODEL
+from config import get_openai_key, OTHER_INFO_FILE, TRAINED_DATA_FILE, OPENAI_MODEL
 from utils.common_utils import last_modified_iso, transform_to_object
 from utils.run_data_manager import get_run_data, update_run_data_udc
 from utils.txt_utils import append_txt_records
@@ -384,12 +384,12 @@ def send_other_info_to_chat(previous_chat_id, qnas_dict):
             input=payload,
             previous_response_id=previous_chat_id
         )
-        other_info =  {
+        other_info = {
             "file_path": os.path.join(OTHER_INFO_FILE),
             "last_modified": last_modified_iso(OTHER_INFO_FILE)
         }
         print("other_info updated with AI feedback: ", response.output_text)
-        append_txt_records(OTHER_INFO_TRAINED_FILE, qnas)
+        append_txt_records(TRAINED_DATA_FILE, qnas)
         update_run_data_udc(response.id, "other_info", other_info)
         return response.id
     except Exception as e:

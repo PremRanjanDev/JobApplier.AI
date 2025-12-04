@@ -2,6 +2,7 @@ import os
 import pathlib
 
 from config import LINKEDIN_STATE_FILE
+from linkedin.constants import timeout_1s
 
 
 def login(browser, save_login=False):
@@ -16,6 +17,7 @@ def login(browser, save_login=False):
 
     context = browser.new_context(**context_args)
     page = context.new_page()
+    page.wait_for_timeout(timeout_1s)
     print("Navigating to LinkedIn feed...")
     page.goto("https://www.linkedin.com/feed/")
 

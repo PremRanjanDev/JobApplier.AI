@@ -137,7 +137,7 @@ def parse_hiring_team(job_detail_html):
     response = client.responses.create(
         model=OPENAI_MODEL,
         input=f"""
-            Extract "Meet the hiring team" details from the HTML below and output JSON following this structure, return {{}} if not find "Meet the hiring team":
+            Extract "Meet the hiring team" details from the HTML below and output JSON following this structure. Return {{}} if not find "Meet the hiring team" section.
             {json.dumps(hiring_team_structure, indent=2)}
             Return valid JSON only. HTML:
             {job_detail_html}

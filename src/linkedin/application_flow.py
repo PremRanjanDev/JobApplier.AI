@@ -161,6 +161,7 @@ def contact_recruiter(page, job_details_section):
         if not profile_link:
             return False, "Failed to get recruiter profile link"
         new_tab = page.context.new_page()
+        new_tab.wait_for_timeout(timeout_1s)
         new_tab.goto(profile_link)
         new_tab.wait_for_timeout(timeout_5s)
         main_section = new_tab.query_selector('main section')
@@ -168,26 +169,27 @@ def contact_recruiter(page, job_details_section):
         rct_conn_status, rct_conn_msg = False, ""
         if CONNECT_RECRUITER:
             print("Connecting to recruiter...")
-            rct_conn_status, rct_conn_msg = connect_recruiter(new_tab, main_section, recruiter)
+            rct_conn_status, rct_conn_msg = connect_recruiter(new_tab, main_section, recruiter_name)
             print(f"Recruiter connection status: {rct_conn_status}, message: {rct_conn_msg}")
 
         rct_msg_status, rct_msg_msg = False, ""
-        if "already connected" in rct_conn_msg.lower() and MESSAGE_RECRUITER:
+        if MESSAGE_RECRUITER:
             print("Messaging to recruiter...")
-            rct_msg_status, rct_msg_msg = message_recruiter(page, recruiter, job_details_section)
+            rct_msg_status, rct_msg_msg = message_recruiter(new_tab, main_section, recruiter_name)
             print(f"Recruiter message status: {rct_msg_status}, message: {rct_msg_msg}")
 
-        return rct_msg_status or rct_conn_status, rct_conn_msg or rct_conn_msg or "No connect or message action specified"
+        return (rct_conn_status or rct_msg_status,
+                " | ".join(x for x in [rct_conn_msg, rct_msg_msg] if x) or "No connect or message action specified")
     except Exception as e:
-        print(f"Failed to connect to recruiter: {e}")
-        return False, "Failed to connect to recruiter"
+        print(f"Failed to contact recruiter: {e}")
+        return False, "Failed to contact recruiter"
     finally:
         print("Closing recruiter profile tab!")
         if new_tab:
             new_tab.close()
 
 
-def connect_recruiter(page, main_section, recruiter_info):
+def connect_recruiter(page, main_section, recruiter_name):
     connect_button = main_section.query_selector('button:has-text("Connect")')
     pending_button = main_section.query_selector('button:has-text("Pending")')
     if not connect_button and not pending_button:
@@ -220,7 +222,7 @@ def connect_recruiter(page, main_section, recruiter_info):
     add_note_input = invite_model.query_selector('textarea[name="message"]')
     if not add_note_input:
         return False, "Failed to find note input"
-    connection_note = get_recruiter_connect_note(recruiter_info.get('name'))
+    connection_note = get_recruiter_connect_note(recruiter_name)
     if not connection_note:
         return False, "Failed to get recruiter connection note"
     add_note_input.type(connection_note, delay=2)
@@ -233,23 +235,19 @@ def connect_recruiter(page, main_section, recruiter_info):
     return True, "Connection request sent to recruiter"
 
 
-def message_recruiter(page, main_section, recruiter_info):
-    recruiter_name = recruiter_info.get('name')
-    recruiter_message = get_recruiter_message(recruiter_name)
-    if not recruiter_message:
-        return False, "Failed to get recruiter message"
-    print(f"Sending message to recruiter {recruiter_name}: {recruiter_message}")
-    msg_button_selector = recruiter_info.get('messageButton', {}).get('selector')
-    if not msg_button_selector:
-        return False, "Failed to get message button selector"
-    msg_button = main_section.query_selector(msg_button_selector)
+def message_recruiter(page, main_section, recruiter_name):
+    print(f"Sending message to recruiter '{recruiter_name}'")
+    msg_button = main_section.query_selector('button:has-text("Message")')
     if not msg_button:
         return False, "Failed to find message button"
+    if msg_button.is_disabled():
+        return False, "Message button is disabled"
     msg_button.click()
     page.wait_for_timeout(timeout_2s)
     msg_form_el = page.query_selector('form[class*="msg-form"]')
     msg_form = parse_message_form(msg_form_el.inner_html())
     input_sub_selector = msg_form.get("fields", {}).get('subject', {}).get('selector')
+    recruiter_message = get_recruiter_message(recruiter_name)
     if input_sub_selector:
         subject_input = msg_form_el.query_selector(input_sub_selector)
         subject_input.type(recruiter_message.get("subject", ''), delay=2)

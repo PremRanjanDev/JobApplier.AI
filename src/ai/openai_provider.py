@@ -1,5 +1,6 @@
 import json
 import os.path
+import sys
 
 from openai import OpenAI
 
@@ -468,7 +469,7 @@ def _get_user_detail_conv_id():
     try:
         resume_path = get_resume_file()
     except Exception as e:
-        raise RuntimeError(str(e))
+        sys.exit(f"Failed to get the resume file: {e}")
 
     user_detail_chat = run_data.get(key, {})
     user_detail_chat_id = user_detail_chat.get("chat_id")

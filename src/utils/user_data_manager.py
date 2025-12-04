@@ -118,7 +118,7 @@ def get_resume_file():
     if not resume_files:
         raise RuntimeError(f"No resume file found in folder: {RESUME_FOLDER}")
     if len(resume_files) > 1:
-        raise RuntimeError("Multiple files found in resume folder. Expected single file.")
+        raise RuntimeError(f"Multiple files found in folder {RESUME_FOLDER}. Expected single file.")
 
     return os.path.join(RESUME_FOLDER, resume_files[0])
 

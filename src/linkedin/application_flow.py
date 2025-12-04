@@ -151,15 +151,21 @@ def contact_recruiter(page, job_details_section):
         return False, "No hiring team found"
     recruiter = next((r for r in hiring_team if r.get('isJobPoster')), hiring_team[0])
 
+    rct_conn_status, rct_conn_msg = False, ""
     if CONNECT_RECRUITER:
         print("Connecting to recruiter...")
-        return connect_recruiter(page, recruiter)
+        rct_conn_status, rct_conn_msg = connect_recruiter(page, recruiter)
+        print(f"Recruiter connection status: {rct_conn_status}, message: {rct_conn_msg}")
 
-    if MESSAGE_RECRUITER:
-        print("Message recruiter...")
-        return message_recruiter(page, recruiter, job_details_section)
+    rct_msg_status, rct_msg_msg = False, ""
+    if not rct_conn_status and MESSAGE_RECRUITER:
+        if "pending" in rct_conn_msg.lower():
+            return False, "Recruiter not connected yet"
+        print("Messaging to recruiter...")
+        rct_msg_status, rct_msg_msg = message_recruiter(page, recruiter, job_details_section)
+        print(f"Recruiter message status: {rct_msg_status}, message: {rct_msg_msg}")
 
-    return False, "No connect or message action specified"
+    return rct_msg_status or rct_conn_status, rct_conn_msg or rct_conn_msg or "No connect or message action specified"
 
 
 def connect_recruiter(page, recruiter):
@@ -176,16 +182,27 @@ def connect_recruiter(page, recruiter):
         new_tab.goto(profile_link)
         new_tab.wait_for_timeout(timeout_5s)
         main_section = new_tab.query_selector('main section')
-        connect_button = main_section.query_selector('button:text-is("Connect")')
-        if not connect_button:
-            more_button = main_section.query_selector('button:text-is("More")')
-            if not more_button:
-                return False, "Failed to find connect or more button"
-            more_button.click()
-            new_tab.wait_for_timeout(timeout_1s)
-            connect_button = main_section.query_selector('div[class*="dropdown"] span:text-is("Connect")')
-        if not connect_button:
+        connect_button = main_section.query_selector('button:has-text("Connect")')
+        pending_button = main_section.query_selector('button:has-text("Pending")')
+        if not connect_button and not pending_button:
+            more_button = main_section.query_selector('button:has-text("More")')
+            if more_button:
+                more_button.click()
+                new_tab.wait_for_timeout(timeout_1s)
+                connect_button = main_section.query_selector('div[class*="dropdown"] span:has-text("Connect")')
+                if not connect_button and not pending_button:
+                    pending_button = main_section.query_selector('div[class*="dropdown"] span:has-text("Pending")')
+
+        if connect_button:
+            if connect_button.inner_text() == "Remove Connection":
+                return False, "Recruiter already connected"
+            elif connect_button.inner_text() != "Connect":
+                return False, f"Found {connect_button.inner_text()} button instead of 'Connect'"
+        else:
+            if pending_button and pending_button.inner_text() == "Pending":
+                return False, "Connection pending"
             return False, "Failed to find connect button"
+
         connect_button.click()
         new_tab.wait_for_timeout(timeout_2s)
         invite_model = new_tab.query_selector('div[class*="send-invite"], div[class*="send-invite-modal"]')
@@ -214,7 +231,6 @@ def connect_recruiter(page, recruiter):
     finally:
         if new_tab:
             new_tab.close()
-
 
 def message_recruiter(page, recruiter, job_details_section):
     recruiter_name = recruiter.get('name')

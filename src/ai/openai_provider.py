@@ -427,8 +427,8 @@ def start_current_job_query_chat(job_details):
         "{\n"
         '  \"relevancyPercentage\": number<number from 0 to 100>,\n'
         '  \"isRelevant\": boolean <true or false>,\n'
-        '  \"match\": \"str <Key things which matched, in short>,\"\n'
-        '  \"mismatch\": \"str <Key things which mismatched, in short>\"\n'
+        '  \"match\": \"str <Key things which matched, in very short>,\"\n'
+        '  \"mismatch\": \"str <Key things which mismatched, in very short>\"\n'
         "}\n\n"
         "Use your best judgment for relevancyPercentage and isRelevant.\n\n"
         f"JOB_DETAILS:\n{job_details}"

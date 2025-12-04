@@ -32,7 +32,7 @@ KEYS_DIR = BASE_DIR / "keys"
 OUTPUT_DIR = BASE_DIR / "output"
 
 # User data paths
-OTHER_INFO_FILE = MY_DATA_DIR / "other_info.txt"
+QNA_LIST_FILE = MY_DATA_DIR / "qna_list.txt"
 RESUME_FOLDER = MY_DATA_DIR / "resume"
 
 # System data paths

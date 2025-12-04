@@ -1,6 +1,6 @@
 from ai.openai_provider import ask_text_from_ai, ask_select_from_ai, ask_recruiter_message_from_ai, \
     ask_recruiter_connect_note_from_ai
-from utils.user_data_manager import append_other_info
+from utils.user_data_manager import append_qna_list
 from .cache_manager import get_from_cache, set_to_cache
 
 _non_caching_ques = ["Headline", "Summary", "Cover letter", "Cover Letter"]
@@ -18,7 +18,7 @@ def get_text_answer(question, validation=None):
         answer = ""
     if question.strip() not in _non_caching_ques:
         set_to_cache(cache_key, answer)
-        append_other_info(question, answer)
+        append_qna_list(question, answer)
     print(f"Answer: {answer}")
     return answer
 
@@ -43,6 +43,6 @@ def get_select_answer(question, options):
         answer = ""
     if question.strip() not in _non_caching_ques:
         set_to_cache(cache_key, answer)
-        append_other_info(question, answer)
+        append_qna_list(question, answer)
     print(f"Selected option: {answer}")
     return answer

@@ -4,11 +4,11 @@ import sys
 
 from openai import OpenAI
 
-from config import get_openai_key, OTHER_INFO_FILE, TRAINED_DATA_FILE, OPENAI_MODEL
+from config import get_openai_key, QNA_LIST_FILE, TRAINED_DATA_FILE, OPENAI_MODEL
 from utils.common_utils import last_modified_iso, transform_to_object
 from utils.run_data_manager import get_run_data, update_run_data_udc
 from utils.txt_utils import append_txt_records
-from utils.user_data_manager import get_changed_other_info, remove_from_other_info, get_resume_file, is_new_resume
+from utils.user_data_manager import get_changed_qna_list, remove_from_qna_list, get_resume_file, is_new_resume
 
 _openai_client = None
 _user_detail_chat_id = None
@@ -368,12 +368,12 @@ def upload_resume_and_start_chat(file_path):
     return response.id
 
 
-def send_other_info_to_chat(previous_chat_id, qnas_dict):
+def send_qna_list_to_chat(previous_chat_id, qnas_dict):
     """ Send qnas_dict as a single text message continuing conversation chat_id. Returns the response id (if any) or None. """
     if not previous_chat_id or not qnas_dict:
         print("No previous user_detail_chat_id or no qnas to send.")
         return None
-    print("Updating AI context with other_info.")
+    print("Updating AI context with qna_list.")
     qnas = [f"{k}: {v}" for k, v in qnas_dict.items()]
     prompt = "Here are some updated details, please update your information accordingly and respond based on updated data for future questions."
     payload = f"{prompt}\n" + "\n - ".join(qnas)
@@ -384,16 +384,16 @@ def send_other_info_to_chat(previous_chat_id, qnas_dict):
             input=payload,
             previous_response_id=previous_chat_id
         )
-        other_info = {
-            "file_path": os.path.join(OTHER_INFO_FILE),
-            "last_modified": last_modified_iso(OTHER_INFO_FILE)
+        qna_list = {
+            "file_path": os.path.join(QNA_LIST_FILE),
+            "last_modified": last_modified_iso(QNA_LIST_FILE)
         }
-        print("other_info updated with AI feedback: ", response.output_text)
+        print("qna_list updated with AI feedback: ", response.output_text)
         append_txt_records(TRAINED_DATA_FILE, qnas)
-        update_run_data_udc(response.id, "other_info", other_info)
+        update_run_data_udc(response.id, "qna_list", qna_list)
         return response.id
     except Exception as e:
-        print(f"Failed to send other_info to chat: {e}")
+        print(f"Failed to send qna_list to chat: {e}")
         return None
 
 def start_current_job_query_chat(job_details):
@@ -458,9 +458,9 @@ def _get_user_detail_conv_id():
     Return an existing user-detail conversation id if resume file metadata matches,
     otherwise upload resume and start a new conversation, persisting metadata.
 
-    Also handles other_info.txt qnas:
+    Also handles qna_list.txt qnas:
     - If resume is new -> create new conversation and then send ALL valid qnas (if any).
-    - If resume unchanged -> check other_info qnas against CACHE_FILE and only send changed qnas.
+    - If resume unchanged -> check qna_list qnas against CACHE_FILE and only send changed qnas.
     """
     print("Getting user detail conversation ID...")
     run_data = get_run_data()
@@ -482,12 +482,12 @@ def _get_user_detail_conv_id():
         print(f"New user_detail_chat_id: {user_detail_chat_id}")
         resume_changed = True
 
-    changed_qnas = get_changed_other_info(user_detail_chat, resume_changed)
+    changed_qnas = get_changed_qna_list(user_detail_chat, resume_changed)
     if changed_qnas:
-        print("Sending other_info updates to conversation...\n", changed_qnas)
-        user_detail_chat_id = send_other_info_to_chat(user_detail_chat_id, changed_qnas)
+        print("Sending qna_list updates to conversation...\n", changed_qnas)
+        user_detail_chat_id = send_qna_list_to_chat(user_detail_chat_id, changed_qnas)
         print(f"New user_detail_chat_id: {user_detail_chat_id}")
-        remove_from_other_info(changed_qnas)
+        remove_from_qna_list(changed_qnas)
 
     return user_detail_chat_id
 

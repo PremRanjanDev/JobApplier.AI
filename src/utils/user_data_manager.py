@@ -1,21 +1,21 @@
 import os
 
-from config import OTHER_INFO_FILE, TRAINED_DATA_FILE, RESUME_FOLDER, OPENAI_MODEL
+from config import QNA_LIST_FILE, TRAINED_DATA_FILE, RESUME_FOLDER, OPENAI_MODEL
 from utils.cache_manager import remove_by_ques_from_cache, get_full_qna_cache
 from utils.common_utils import last_modified_iso
 from utils.run_data_manager import get_run_data
 
-_other_info_header = []
-_other_info = {}
+_qna_list_header = []
+_qna_list = {}
 
 
-def _load_other_info_data():
-    global _other_info
-    global _other_info_header
-    _other_info_header, _other_info = parse_other_info_qnas(OTHER_INFO_FILE, 2)
+def _load_qna_list_data():
+    global _qna_list
+    global _qna_list_header
+    _qna_list_header, _qna_list = parse_qna_list_qnas(QNA_LIST_FILE, 2)
 
 
-def parse_other_info_qnas(file_path, header_lines=0):
+def parse_qna_list_qnas(file_path, header_lines=0):
     """
     Returns:
         header_lines_list: list of raw header lines
@@ -45,50 +45,52 @@ def parse_other_info_qnas(file_path, header_lines=0):
     return header_lines_list, qnas
 
 
-def get_changed_other_info(user_detail_chat, is_new_conv=False):
-    """ Return questions from other_info_qnas that need updates. """
-    print("Checking for changed other_info qnas...")
-    other_info_meta = user_detail_chat.get("other_info", {})
-    current_last_modified = last_modified_iso(OTHER_INFO_FILE)
-    if not is_new_conv and other_info_meta.get("last_modified") == current_last_modified:
+def get_changed_qna_list(user_detail_chat, is_new_conv=False):
+    """ Return questions from qna_list that need updates. """
+    print("Checking for changed qna_list qnas...")
+    qna_list_meta = user_detail_chat.get("qna_list", {})
+    current_last_modified = last_modified_iso(QNA_LIST_FILE)
+    if not is_new_conv and qna_list_meta.get("last_modified") == current_last_modified:
         return []
     
     changed = {}
     qna_cache = get_full_qna_cache()
-    _, other_info_trained_qnas = parse_other_info_qnas(TRAINED_DATA_FILE)
-    for user_q, user_a in _other_info.items():
+    _, qna_list_trained_qnas = parse_qna_list_qnas(TRAINED_DATA_FILE)
+    for user_q, user_a in _qna_list.items():
         cache_a = qna_cache.get(user_q)
         if (user_a
                 and (is_new_conv
                      or (user_a != cache_a
                          and (cache_a is not None
-                              or user_a != other_info_trained_qnas.get(user_q))))):
+                              or user_a != qna_list_trained_qnas.get(user_q))))):
             changed[user_q] = user_a
             remove_by_ques_from_cache(user_q)
     
     return changed
 
 
-def remove_from_other_info(trained_qnas):
+def remove_from_qna_list(trained_qnas):
     for q in trained_qnas:
-        if q in _other_info:
-            del _other_info[q]
-    save_other_info()
+        if q in _qna_list:
+            del _qna_list[q]
+    save_qna_list()
 
-def save_other_info():
-    with open(OTHER_INFO_FILE, "w", encoding="utf-8") as f:
-        for line in _other_info_header:
+
+def save_qna_list():
+    with open(QNA_LIST_FILE, "w", encoding="utf-8") as f:
+        for line in _qna_list_header:
             f.write(line + "\n")
 
-        sorted_items = sorted(_other_info.items(), key=lambda x: x[1] != "")
+        sorted_items = sorted(_qna_list.items(), key=lambda x: x[1] != "")
         sorted_dict = dict(sorted_items)
         for k, v in sorted_dict.items():
             f.write(f"{k}: {v}\n")
 
-def append_other_info(question, answer):
-    global _other_info
-    _other_info = {question: answer} | _other_info
-    save_other_info()
+
+def append_qna_list(question, answer):
+    global _qna_list
+    _qna_list = {question: answer} | _qna_list
+    save_qna_list()
 
 def is_new_resume(resume_file_path):
     print("Checking if resume file is new or changed...")
@@ -122,4 +124,5 @@ def get_resume_file():
 
     return os.path.join(RESUME_FOLDER, resume_files[0])
 
-_load_other_info_data()
+
+_load_qna_list_data()

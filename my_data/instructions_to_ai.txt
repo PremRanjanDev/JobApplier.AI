@@ -1,0 +1,8 @@
+---------------- Additional information or instructions to AI -----------------
+| Add your any additional instructions below the dashed line.                 |
+| Ex: Use the first-name of the person for the message to recruiters.         |
+| ~~ Instructions will be removed from below once trained to AI. ~~           |
+-------------------------------------------------------------------------------
+I am immediate joiner.
+Highlight relevant skills in points for cover letters.
+Add the phone number with country code, LinkedIn and GitHub profile links (if any) in new lines for the bottom signature of the cover letters.

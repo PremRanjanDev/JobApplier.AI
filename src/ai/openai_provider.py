@@ -148,6 +148,49 @@ def parse_hiring_team(job_detail_html):
     return transform_to_object(response.output_text).get("recruiters", [])
 
 
+def parse_profile(profile_detail_html):
+    print("Parsing person profile details using OpenAI...")
+    person_detail_and_controls_structure = {
+        "person": {
+            "name": "str:<name of person>",
+            "company": "str:<company of person>",
+            "designation": "str:<designation of person>",
+            "location": "str:<location of person>",
+            "profileLink": "str:<profile link of person>",
+            "isConnected": "bool:<if person is connected with current user>",
+            "connectionStatus": "str:<connection status of person with current user: Connection Pending, Already connected, Not invited>",
+            "messageButton": {
+                "label": "str:<label of button>",
+                "selector": "str:<selector of button>",
+                "isEnabled": "bool:<if indicates 'enabled'>",
+            },
+            "connectButton": {
+                "label": "str:<label of button>",
+                "selector": "str:<selector of button>",
+                "isEnabled": "bool:<if indicates 'enabled'>",
+            },
+            "otherButtons": [
+                {
+                    "label": "str:<label of button>",
+                    "selector": "str:<selector of button>",
+                    "isEnabled": "bool:<if indicates 'enabled'>",
+                }
+            ]
+        }
+    }
+    client = _get_openai_client()
+    response = client.responses.create(
+        model=OPENAI_MODEL,
+        input=f"""
+            Extract the person details and available control buttons from the HTML below and output JSON following this structure. Return {{}} if not none.
+            {json.dumps(person_detail_and_controls_structure, indent=2)}
+            Return valid JSON only. HTML:
+            {profile_detail_html}
+            """
+    )
+    return transform_to_object(response.output_text).get("person", {})
+
+
 def parse_message_form(msg_form_html):
     """
     Parsing message form using OpenAI

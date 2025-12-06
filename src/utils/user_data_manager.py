@@ -17,7 +17,7 @@ _instructions_list = []
 def _load_qna_list_data():
     global _qna_list
     global _qna_list_header
-    _qna_list_header, _qna_list = parse_qna_list_qnas()
+    _qna_list_header, _qna_list = read_qna_list_qnas()
     global _instructions_list_header
     global _instructions_list
     _instructions_list_header, _instructions_list = read_header_file(INSTRUCTIONS_FILE,
@@ -45,7 +45,7 @@ def read_header_file(file_path, header_lines=0):
     return headers, body
 
 
-def parse_qna_list_qnas():
+def read_qna_list_qnas():
     """
     Returns:
         header_lines_list: list of raw header lines
@@ -57,7 +57,7 @@ def parse_qna_list_qnas():
         line = raw.strip()
         if ':' not in line:
             continue
-        q, a = line.split(':', 1)
+        q, a = line.rsplit(':', 1)
         qna[q.strip()] = a.strip()
 
     return headers, qna

@@ -1,4 +1,4 @@
-from ai.openai_provider import parse_hiring_team, start_current_job_query_chat, parse_message_form
+from ai.openai_provider import parse_hiring_team, start_current_job_query_chat, parse_message_form, parse_profile
 from config import EXCLUDE_COMPANIES, RELEVANCY_PERCENTAGE, CONNECT_RECRUITER, MESSAGE_RECRUITER
 from utils.qna_manager import get_recruiter_message, get_recruiter_connect_note
 from .constants import timeout_1s, timeout_2s, timeout_5s
@@ -165,17 +165,24 @@ def contact_recruiter(page, job_details_section):
         new_tab.goto(profile_link)
         new_tab.wait_for_timeout(timeout_5s)
         main_section = new_tab.query_selector('main section')
+        more_button = main_section.query_selector('button:has-text("More"), button[aria-label="More"]')
+        more_dropdown = None
+        if more_button:
+            more_button.click()
+            more_dropdown = new_tab.query_selector('div[role="menu"]')
+        recruiter = parse_profile(main_section.inner_html() + (more_dropdown.inner_html() if more_dropdown else ""))
 
         rct_conn_status, rct_conn_msg = False, ""
-        if CONNECT_RECRUITER:
+        if (CONNECT_RECRUITER and not recruiter.get('isConnected')
+                and "pending" not in recruiter.get('connectionStatus')):
             print("Connecting to recruiter...")
-            rct_conn_status, rct_conn_msg = connect_recruiter(new_tab, main_section, recruiter_name)
+            rct_conn_status, rct_conn_msg = connect_recruiter(new_tab, main_section, recruiter)
             print(f"Recruiter connection status: {rct_conn_status}, message: {rct_conn_msg}")
 
         rct_msg_status, rct_msg_msg = False, ""
-        if MESSAGE_RECRUITER:
+        if MESSAGE_RECRUITER and recruiter.get('isConnected'):
             print("Messaging to recruiter...")
-            rct_msg_status, rct_msg_msg = message_recruiter(new_tab, main_section, recruiter_name)
+            rct_msg_status, rct_msg_msg = message_recruiter(new_tab, main_section, recruiter)
             print(f"Recruiter message status: {rct_msg_status}, message: {rct_msg_msg}")
 
         return (rct_conn_status or rct_msg_status,
@@ -189,32 +196,38 @@ def contact_recruiter(page, job_details_section):
             new_tab.close()
 
 
-def connect_recruiter(page, main_section, recruiter_name):
-    connect_button = main_section.query_selector('button:has-text("Connect")')
-    pending_button = main_section.query_selector('button:has-text("Pending")')
-    if not connect_button and not pending_button:
-        more_button = main_section.query_selector('button:has-text("More")')
-        if more_button:
-            more_button.click()
-            page.wait_for_timeout(timeout_1s)
-            connect_button = main_section.query_selector('div[class*="dropdown"] span:has-text("Connect")')
-            if not connect_button and not pending_button:
-                pending_button = main_section.query_selector('div[class*="dropdown"] span:has-text("Pending")')
+def connect_recruiter(page, main_section, recruiter):
+    # connect_button = main_section.query_selector('button:has-text("Connect"), button[aria-label="Connect"]')
+    # pending_button = main_section.query_selector('button:has-text("Pending"), button[aria-label="Pending"]')
+    # if not connect_button and not pending_button:
+    #     more_button = main_section.query_selector('button:has-text("More"), button[aria-label="More"]')
+    #     if more_button:
+    #         more_button.click()
+    #         page.wait_for_timeout(timeout_1s)
+    #         connect_button = main_section.query_selector('div[class*="dropdown"] span:has-text("Connect")')
+    #         if not connect_button and not pending_button:
+    #             pending_button = main_section.query_selector('div[class*="dropdown"] span:has-text("Pending")')
+    #
+    # if connect_button:
+    #     if connect_button.inner_text() == "Remove Connection":
+    #         return False, "Recruiter already connected"
+    #     elif connect_button.inner_text() != "Connect":
+    #         return False, f"Found {connect_button.inner_text()} button instead of 'Connect'"
+    # else:
+    #     if pending_button and pending_button.inner_text() == "Pending":
+    #         return False, "Connection pending"
+    #     return False, "Failed to find connect button"
 
-    if connect_button:
-        if connect_button.inner_text() == "Remove Connection":
-            return False, "Recruiter already connected"
-        elif connect_button.inner_text() != "Connect":
-            return False, f"Found {connect_button.inner_text()} button instead of 'Connect'"
-    else:
-        if pending_button and pending_button.inner_text() == "Pending":
-            return False, "Connection pending"
+    connect_button_selector = recruiter.get('connectButton', {}).get('selector')
+    if not connect_button_selector:
+        return False, "Failed to find connect button selector"
+    connect_button = main_section.query_selector(connect_button_selector)
+    if not connect_button:
         return False, "Failed to find connect button"
-
     connect_button.click()
     page.wait_for_timeout(timeout_2s)
     invite_model = page.query_selector('div[class*="send-invite"], div[class*="send-invite-modal"]')
-    add_note_button = invite_model.query_selector('button:has-text("Add a note")')
+    add_note_button = invite_model.query_selector('button:has-text("Add a note"), button[aria-label="Add a note"]')
     if not add_note_button:
         return False, "Failed to find add note button"
     add_note_button.click()
@@ -222,12 +235,12 @@ def connect_recruiter(page, main_section, recruiter_name):
     add_note_input = invite_model.query_selector('textarea[name="message"]')
     if not add_note_input:
         return False, "Failed to find note input"
-    connection_note = get_recruiter_connect_note(recruiter_name)
+    connection_note = get_recruiter_connect_note(recruiter.get('name'))
     if not connection_note:
         return False, "Failed to get recruiter connection note"
     add_note_input.type(connection_note, delay=2)
     page.wait_for_timeout(timeout_1s)
-    send_button = invite_model.query_selector('button:has-text("Send")')
+    send_button = invite_model.query_selector('button:has-text("Send"), button[aria-label="Send"]')
     if not send_button:
         return False, "Failed to find send button"
     send_button.click()
@@ -235,9 +248,14 @@ def connect_recruiter(page, main_section, recruiter_name):
     return True, "Connection request sent to recruiter"
 
 
-def message_recruiter(page, main_section, recruiter_name):
+def message_recruiter(page, main_section, recruiter):
+    recruiter_name = recruiter.get('name')
     print(f"Sending message to recruiter '{recruiter_name}'")
-    msg_button = main_section.query_selector('button:has-text("Message")')
+    # msg_button = main_section.query_selector('button:has-text("Message"), button[aria-label="Message"]')
+    msg_button_selector = main_section.query_selector(recruiter.get('messageButton', {}).get('selector'))
+    if not msg_button_selector:
+        return False, "Failed to find message button selector"
+    msg_button = main_section.query_selector(msg_button_selector)
     if not msg_button:
         return False, "Failed to find message button"
     if msg_button.is_disabled():

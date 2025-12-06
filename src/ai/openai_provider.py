@@ -4,11 +4,13 @@ import sys
 
 from openai import OpenAI
 
-from config import get_openai_key, QNA_LIST_FILE, TRAINED_DATA_FILE, OPENAI_MODEL
+from config import get_openai_key, QNA_LIST_FILE, TRAINED_DATA_FILE, OPENAI_MODEL, INSTRUCTIONS_FILE
+from utils.cache_manager import clear_cache
 from utils.common_utils import last_modified_iso, transform_to_object
 from utils.run_data_manager import get_run_data, update_run_data_udc
 from utils.txt_utils import append_txt_records
-from utils.user_data_manager import get_changed_qna_list, remove_from_qna_list, get_resume_file, is_new_resume
+from utils.user_data_manager import get_changed_qna_list, remove_from_qna_list, get_resume_file, is_new_resume, \
+    get_ai_instructions_data, clear_ai_instructions_data
 
 _openai_client = None
 _user_detail_chat_id = None
@@ -364,6 +366,7 @@ def upload_resume_and_start_chat(file_path):
         "last_modified": last_modified_iso(file_path)
     }
     print("Uploaded resume and started new conversation with AI feedback: ", response.output_text)
+    append_txt_records(TRAINED_DATA_FILE, f"Resume updated: {file_path}")
     update_run_data_udc(response.id, "resume", resume)
     return response.id
 
@@ -384,13 +387,40 @@ def send_qna_list_to_chat(previous_chat_id, qnas_dict):
             input=payload,
             previous_response_id=previous_chat_id
         )
-        qna_list = {
+        run_data_qna_list = {
             "file_path": os.path.join(QNA_LIST_FILE),
             "last_modified": last_modified_iso(QNA_LIST_FILE)
         }
         print("qna_list updated with AI feedback: ", response.output_text)
         append_txt_records(TRAINED_DATA_FILE, qnas)
-        update_run_data_udc(response.id, "qna_list", qna_list)
+        update_run_data_udc(response.id, "qna_list", run_data_qna_list)
+        return response.id
+    except Exception as e:
+        print(f"Failed to send qna_list to chat: {e}")
+        return None
+
+
+def send_instruction_to_chat(previous_chat_id, instructions):
+    """ Send instructions as a single text message continuing conversation chat_id. Returns the response id (if any) or None."""
+    if not previous_chat_id or not instructions:
+        print("No previous user_detail_chat_id or instructions to send.")
+        return None
+    print("Updating AI context with instructions.")
+    payload = "\n".join(instructions)
+    try:
+        client = _get_openai_client()
+        response = client.responses.create(
+            model=OPENAI_MODEL,
+            input=payload,
+            previous_response_id=previous_chat_id
+        )
+        run_data_instructions = {
+            "file_path": os.path.join(INSTRUCTIONS_FILE),
+            "last_modified": last_modified_iso(INSTRUCTIONS_FILE)
+        }
+        print("instructions updated with AI feedback: ", response.output_text)
+        append_txt_records(TRAINED_DATA_FILE, instructions)
+        update_run_data_udc(response.id, "instructions", run_data_instructions)
         return response.id
     except Exception as e:
         print(f"Failed to send qna_list to chat: {e}")
@@ -469,18 +499,18 @@ def _get_user_detail_conv_id():
     try:
         resume_path = get_resume_file()
     except Exception as e:
-        sys.exit(f"Failed to get the resume file: {e}")
+        sys.exit(f"Invalid resume file: {e}")
 
     user_detail_chat = run_data.get(key, {})
     user_detail_chat_id = user_detail_chat.get("chat_id")
     print(f"Existing user_detail_chat_id: {user_detail_chat_id}")
 
     resume_changed = False
-    if not user_detail_chat_id or is_new_resume(resume_path):
+    if not user_detail_chat_id or (resume_changed := is_new_resume(resume_path)):
         print("Resume file has changed or no existing conversation found.")
         user_detail_chat_id = upload_resume_and_start_chat(resume_path)
         print(f"New user_detail_chat_id: {user_detail_chat_id}")
-        resume_changed = True
+        clear_cache()
 
     changed_qnas = get_changed_qna_list(user_detail_chat, resume_changed)
     if changed_qnas:
@@ -488,6 +518,13 @@ def _get_user_detail_conv_id():
         user_detail_chat_id = send_qna_list_to_chat(user_detail_chat_id, changed_qnas)
         print(f"New user_detail_chat_id: {user_detail_chat_id}")
         remove_from_qna_list(changed_qnas)
+
+    instruction_to_ai = get_ai_instructions_data()
+    if instruction_to_ai:
+        print("Sending instructions to conversation...\n", changed_qnas)
+        user_detail_chat_id = send_instruction_to_chat(user_detail_chat_id, instruction_to_ai)
+        print(f"New user_detail_chat_id: {user_detail_chat_id}")
+        clear_ai_instructions_data()
 
     return user_detail_chat_id
 

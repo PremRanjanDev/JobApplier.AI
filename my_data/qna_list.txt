@@ -1,8 +1,8 @@
---------------------------------------- Questions: Answers ----------------------------------------
-| Check AI responses below and update answers (if wrong or missing). Keep questions unchanged.    |
-| Ex: How many total years of work experience do you have with AI: 10                             |
-| ~~ QnA will be removed from below once trained to AI. ~~                                        |
----------------------------------------------------------------------------------------------------
+------------------------------- Questions: Answers (by AI) -------------------------------
+| Check and update answers (if wrong or missing), keeping existing questions unchanged.  |
+| Add new Question: Answer if needed, or can remove the correct ones.                    |
+| Ex: How many total years of work experience do you have with AI: 10                    |
+------------------------------------------------------------------------------------------
 Nationality: Indian
 Residence: Singapore
 Required Visa Sponsorship: Yes

@@ -1,48 +1,66 @@
 import os
 
-from config import QNA_LIST_FILE, TRAINED_DATA_FILE, RESUME_FOLDER, OPENAI_MODEL
+from config import QNA_LIST_FILE, RESUME_FOLDER, OPENAI_MODEL, INSTRUCTIONS_FILE
 from utils.cache_manager import remove_by_ques_from_cache, get_full_qna_cache
 from utils.common_utils import last_modified_iso
 from utils.run_data_manager import get_run_data
 
+QNA_LIST_HEADER_LINES = 5
+INSTRUCTIONS_HEADER_LINES = 5
+
 _qna_list_header = []
 _qna_list = {}
 
+_instructions_list_header = []
+_instructions_list = []
 
 def _load_qna_list_data():
     global _qna_list
     global _qna_list_header
-    _qna_list_header, _qna_list = parse_qna_list_qnas(QNA_LIST_FILE, 2)
+    _qna_list_header, _qna_list = parse_qna_list_qnas()
+    global _instructions_list_header
+    global _instructions_list
+    _instructions_list_header, _instructions_list = read_header_file(INSTRUCTIONS_FILE,
+                                                                     INSTRUCTIONS_HEADER_LINES)
 
 
-def parse_qna_list_qnas(file_path, header_lines=0):
+def read_header_file(file_path, header_lines=0):
+    headers = []
+    body = []
+
+    if not os.path.exists(file_path):
+        return headers, body
+
+    with open(file_path, "r", encoding="utf-8") as f:
+        # read raw header lines
+        for _ in range(header_lines):
+            line = next(f, None)
+            if line is not None:
+                headers.append(line)
+
+        # parse rest as key: value
+        for line in f:
+            body.append(line)
+
+    return headers, body
+
+
+def parse_qna_list_qnas():
     """
     Returns:
         header_lines_list: list of raw header lines
         qnas: dict {question: answer}
     """
-    header_lines_list = []
-    qnas = {}
+    headers, data = read_header_file(QNA_LIST_FILE, QNA_LIST_HEADER_LINES)
+    qna = {}
+    for raw in data:
+        line = raw.strip()
+        if ':' not in line:
+            continue
+        q, a = line.split(':', 1)
+        qna[q.strip()] = a.strip()
 
-    if not os.path.exists(file_path):
-        return header_lines_list, qnas
-
-    with open(file_path, "r", encoding="utf-8") as f:
-        # read raw header lines
-        for _ in range(header_lines):
-            raw = next(f, None)
-            if raw is not None:
-                header_lines_list.append(raw.rstrip('\n'))
-
-        # parse rest as key: value
-        for raw in f:
-            line = raw.strip()
-            if ':' not in line:
-                continue
-            q, a = line.split(':', 1)
-            qnas[q.strip()] = a.strip()
-
-    return header_lines_list, qnas
+    return headers, qna
 
 
 def get_changed_qna_list(user_detail_chat, is_new_conv=False):
@@ -55,18 +73,25 @@ def get_changed_qna_list(user_detail_chat, is_new_conv=False):
     
     changed = {}
     qna_cache = get_full_qna_cache()
-    _, qna_list_trained_qnas = parse_qna_list_qnas(TRAINED_DATA_FILE)
     for user_q, user_a in _qna_list.items():
         cache_a = qna_cache.get(user_q)
-        if (user_a
-                and (is_new_conv
-                     or (user_a != cache_a
-                         and (cache_a is not None
-                              or user_a != qna_list_trained_qnas.get(user_q))))):
+        if user_a and (is_new_conv or user_a != cache_a):
             changed[user_q] = user_a
             remove_by_ques_from_cache(user_q)
     
     return changed
+
+
+def get_ai_instructions_data():
+    return _instructions_list
+
+
+def clear_ai_instructions_data():
+    global _instructions_list
+    _instructions_list = []
+    with open(INSTRUCTIONS_FILE, "w", encoding="utf-8") as f:
+        for line in _instructions_list_header:
+            f.write(line)
 
 
 def remove_from_qna_list(trained_qnas):
@@ -79,16 +104,16 @@ def remove_from_qna_list(trained_qnas):
 def save_qna_list():
     with open(QNA_LIST_FILE, "w", encoding="utf-8") as f:
         for line in _qna_list_header:
-            f.write(line + "\n")
+            f.write(line)
 
         sorted_items = sorted(_qna_list.items(), key=lambda x: x[1] != "")
         sorted_dict = dict(sorted_items)
         for k, v in sorted_dict.items():
             f.write(f"{k}: {v}\n")
 
-
 def append_qna_list(question, answer):
     global _qna_list
+    _qna_list.pop(question, None)
     _qna_list = {question: answer} | _qna_list
     save_qna_list()
 
@@ -118,9 +143,9 @@ def get_resume_file():
                     if os.path.isfile(os.path.join(RESUME_FOLDER, fn))]
 
     if not resume_files:
-        raise RuntimeError(f"No resume file found in folder: {RESUME_FOLDER}")
+        raise RuntimeError(f"No resume file found in folder: '{RESUME_FOLDER}'")
     if len(resume_files) > 1:
-        raise RuntimeError(f"Multiple files found in folder {RESUME_FOLDER}. Expected single file.")
+        raise RuntimeError(f"Multiple files found in folder '{RESUME_FOLDER}', expected single file.")
 
     return os.path.join(RESUME_FOLDER, resume_files[0])
 

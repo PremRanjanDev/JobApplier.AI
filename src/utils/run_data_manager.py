@@ -31,7 +31,7 @@ def save_run_data():
 
 def update_run_data_udc(user_detail_chat_id, prop_key: str, value: dict):
     """
-    Update run_data['user_detail_chat'] at nested path specified by propKey.
+    Update run_data['user_detail_chat'] at the nested path specified by propKey.
     propKey is now a single-level key such as "resume".
     Always updates user_detail_chat.chat_id and user_detail_chat.last_updated_at.
     """

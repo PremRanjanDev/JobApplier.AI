@@ -33,6 +33,7 @@ OUTPUT_DIR = BASE_DIR / "output"
 
 # User data paths
 QNA_LIST_FILE = MY_DATA_DIR / "qna_list.txt"
+INSTRUCTIONS_FILE = MY_DATA_DIR / "instructions_to_ai.txt"
 RESUME_FOLDER = MY_DATA_DIR / "resume"
 
 # System data paths

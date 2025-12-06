@@ -1,5 +1,6 @@
 import json
 import os
+
 from config import CACHE_FILE
 
 _prompt_cache = {}
@@ -40,6 +41,11 @@ def remove_by_ques_from_cache(ques):
     for key in list(_prompt_cache.keys()):
         if key.split("::")[1] == ques:
             del _prompt_cache[key]
+    save_prompt_cache()
+
+
+def clear_cache():
+    _prompt_cache.clear()
     save_prompt_cache()
 
 def get_full_cache():

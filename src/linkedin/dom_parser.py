@@ -89,7 +89,7 @@ def extract_form_fields(form_element):
                     return errorEl.textContent.trim();
                 }
             }
-        
+    
             const container = element.closest('.fb-dash-form-element');
             if (container) {
                 const errorEl = container.querySelector('.artdeco-inline-feedback--error .artdeco-inline-feedback__message');
@@ -162,7 +162,7 @@ def extract_form_fields(form_element):
                     options: topOptions
                 };
             }
-            // Radio groups
+            // Radio groups (includes checkbox-style)
             else if (element.matches('fieldset[data-test-form-builder-radio-button-form-component="true"], fieldset[data-test-checkbox-form-component="true"]')) {
                 let label = '';
                 const legend = element.querySelector('legend');
@@ -171,8 +171,9 @@ def extract_form_fields(form_element):
                     label = spanLabel ? spanLabel.textContent.trim() : legend.textContent.trim();
                 }
 
-                const radioInputs = element.querySelectorAll('input[type="radio"]');
-                const options = Array.from(radioInputs).map((input, idx) => {
+                // Support both radio and checkbox inputs inside the fieldset
+                const choiceInputs = element.querySelectorAll('input[type="radio"], input[type="checkbox"]');
+                const options = Array.from(choiceInputs).map((input, idx) => {
                     let optionLabel = '';
                     const labelElem = element.querySelector(`label[for="${input.id}"]`);
                     if (labelElem) {
@@ -182,16 +183,25 @@ def extract_form_fields(form_element):
                     } else {
                         optionLabel = input.value || `Option ${idx + 1}`;
                     }
+
+                    // For checkbox-style options
+                    let optionValue = input.value || '';
+                    if (!optionValue || optionValue.toLowerCase() === 'on') {
+                        optionValue = optionLabel;
+                    }
+
                     return {
                         label: optionLabel,
                         selector: '#' + input.id,
-                        value: input.value,
+                        value: optionValue,
                         isSelected: input.checked
                     };
                 });
 
                 const selected = options.find(opt => opt.isSelected);
                 fieldData = {
+                    // Keep type "radio" so existing form_filler logic (which handles "radio") still works,
+                    // even when the underlying control is a checkbox-style group.
                     type: 'radio',
                     label: label,
                     selector: '#' + element.id,
@@ -209,7 +219,7 @@ def extract_form_fields(form_element):
                 fields.push(fieldData);
             }
         });
-        
+    
         return fields;
     }''')
 

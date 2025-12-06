@@ -53,7 +53,6 @@ def update_run_data_job_applications(id, keywords, location, last_page, applied=
     Update run_data['job_applications'] entry for given id.
     If not found, create a new entry. Updates last_applied_at timestamp if applied is True.
     """
-    print("Updating run data for job applications...")
     try:
         ja_list = _run_data.setdefault("job_applications", [])
         now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()

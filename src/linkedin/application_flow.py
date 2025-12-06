@@ -60,16 +60,13 @@ def process_form_step(page, application_form, previous_state):
         dismiss_job_apply(page, application_form)
         return True, "applied"
     form_fields = extract_form_fields(application_form)
-    print(
-        f"Extracted form. header: {form_info['header']}, progress: {form_info['progress']}"
-    )
+    print(f"Form state: header: {form_info['header']}, progress: {form_info['progress']}")
 
     current_state = form_state(form_info, form_fields)
     step_controls = extract_step_controls(application_form)
     if previous_state == current_state:
-        print(
-            "Form state unchanged from previous step, likely stuck. Dismissing application."
-        )
+        error_count = sum(1 for f in form_fields if f.get('hasError'))
+        print(f"{error_count} fields could not be filled correctly, likely stuck. Dismissing application.")
         dismiss_job_apply(page, application_form, step_controls)
         return False, "Form stuck"
 
@@ -122,7 +119,9 @@ def apply_job(page, ignore_relevancy=False):
         relevancy_status = start_current_job_query_chat(job_details)
         relevancy_percentage = relevancy_status.get("relevancyPercentage", 0)
         print(f"Relevancy status: {json.dumps(relevancy_status, indent=2)}")
-        if not ignore_relevancy and relevancy_percentage < RELEVANCY_PERCENTAGE:
+        if ignore_relevancy:
+            print(f"Ignoring relevancy check due to ignore_relevancy flag")
+        elif relevancy_percentage < RELEVANCY_PERCENTAGE:
             return False, "Job not relevant"
 
         easy_apply_btn_or_msg.click()
@@ -286,7 +285,6 @@ def message_recruiter(page, main_section, recruiter):
 
 def dismiss_job_apply(page, application_form, step_controls=None):
     """Dismisses the application modal, attempting to discard changes if needed."""
-    print("Could not find next button in step controls.")
     if not step_controls and application_form:
         step_controls = extract_step_controls(application_form)
 

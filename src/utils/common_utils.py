@@ -54,7 +54,6 @@ def transform_to_object(json_text):
     Converts a JSON string to a Python object (dict or list).
     Handles both single objects and arrays.
     """
-    print("Transforming JSON text to object...", len(json_text))
     try:
         return json.loads(json_text.strip())
     except Exception as e:

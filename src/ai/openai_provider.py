@@ -488,8 +488,7 @@ def start_current_job_query_chat(job_details):
     if not job_details:
         print("No job_details found.")
         return None
-    print("Current job details chat id:", _current_job_chat_id)
-    print("Updating AI context with Job Details.")
+    print("Understanding the job details...")
     payload = (
         "Here are the job details I am applying for. Based on these job details and the previously provided "
         "user details (resume and any other info), evaluate how relevant this job is to the candidate.\n\n"

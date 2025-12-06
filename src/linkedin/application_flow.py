@@ -8,7 +8,6 @@ from .dom_parser import (
     extract_step_controls,
     form_state, extract_job_details)
 from .form_filler import fill_all_fields
-from .job_search import click_job_card
 
 
 def find_easy_apply_button(job_details_section):
@@ -96,13 +95,9 @@ def process_form_step(page, application_form, previous_state):
     return True, current_state
 
 
-def apply_job(page, job):
+def apply_job(page, ignore_relevancy=False):
     """Applies to a job using the Easy Apply button, handling multi-step forms."""
     try:
-        if not click_job_card(page, job):
-            return False, "Failed to click job card"
-
-        page.wait_for_timeout(timeout_2s)
         job_details_section = page.wait_for_selector(
             'div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"]',
             timeout=timeout_5s,
@@ -124,7 +119,7 @@ def apply_job(page, job):
         relevancy_status = start_current_job_query_chat(job_details)
         relevancy_percentage = relevancy_status.get("relevancyPercentage", 0)
         print(f"Relevancy status: {relevancy_status}")
-        if relevancy_percentage < RELEVANCY_PERCENTAGE:
+        if not ignore_relevancy and relevancy_percentage < RELEVANCY_PERCENTAGE:
             return False, "Job not relevant"
 
         easy_apply_btn_or_msg.click()
@@ -140,7 +135,7 @@ def apply_job(page, job):
         return status, message
 
     except Exception as e:
-        print(f"Error applying to job {getattr(job, 'title', 'Unknown')}: {e}")
+        print(f"Error applying the job: {e}")
         dismiss_job_apply(page, None)
         return False, str(e)
 

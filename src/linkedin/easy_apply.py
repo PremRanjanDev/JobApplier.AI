@@ -2,7 +2,7 @@ import datetime
 
 from utils.run_data_manager import update_run_data_job_applications
 from .application_flow import apply_job
-from .constants import timeout_2s, timeout_5s
+from .constants import timeout_2s
 from .job_search import fetch_job_list, click_job_card
 
 
@@ -11,7 +11,7 @@ def easy_apply_by_url(page, job_urls):
     for job_url in job_urls:
         print(f"Applying to job: {job_url}")
         page.goto(job_url)
-        page.wait_for_timeout(timeout_5s)
+        page.wait_for_timeout(timeout_2s)
         applied, status = apply_job(page, True)
         print(f"Job URL: {job_url}, applied: {applied}, status: {status}")
 
@@ -40,7 +40,6 @@ def apply_jobs_easy_apply(page, keywords, location):
             if not click_job_card(page, job):
                 return False, "Failed to click job card"
             page.wait_for_timeout(timeout_2s)
-            print(f"Applying to job: {job.get("title")}")
             applied, status = apply_job(page)
             if applied:
                 jobs_applied += 1

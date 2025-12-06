@@ -1,3 +1,5 @@
+import json
+
 from ai.openai_provider import parse_hiring_team, start_current_job_query_chat, parse_message_form, parse_profile
 from config import EXCLUDE_COMPANIES, RELEVANCY_PERCENTAGE, CONNECT_RECRUITER, MESSAGE_RECRUITER
 from utils.qna_manager import get_recruiter_message, get_recruiter_connect_note
@@ -98,12 +100,13 @@ def process_form_step(page, application_form, previous_state):
 def apply_job(page, ignore_relevancy=False):
     """Applies to a job using the Easy Apply button, handling multi-step forms."""
     try:
+        print("------------------------- Applying job -------------------------")
         job_details_section = page.wait_for_selector(
             'div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"]',
             timeout=timeout_5s,
         )
         job_details = extract_job_details(job_details_section)
-        print(f"Job details: {job_details}")
+        print(f"Job details: {json.dumps(job_details, indent=2)}")
         company = job_details.get('company', "").lower()
         if not company or not job_details.get('title') or not job_details.get('description'):
             print(f"Skipping {company} due to missing details")
@@ -118,7 +121,7 @@ def apply_job(page, ignore_relevancy=False):
 
         relevancy_status = start_current_job_query_chat(job_details)
         relevancy_percentage = relevancy_status.get("relevancyPercentage", 0)
-        print(f"Relevancy status: {relevancy_status}")
+        print(f"Relevancy status: {json.dumps(relevancy_status, indent=2)}")
         if not ignore_relevancy and relevancy_percentage < RELEVANCY_PERCENTAGE:
             return False, "Job not relevant"
 

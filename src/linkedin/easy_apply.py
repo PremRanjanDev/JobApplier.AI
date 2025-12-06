@@ -34,9 +34,6 @@ def apply_jobs_easy_apply(page, keywords, location):
             break
         print(f"Found {len(jobs)} jobs on the current page.")
         for job in jobs:
-            print("Processing job...")
-            job_id = job.get_attribute("data-job-id")
-            print(f"Job ID: {job_id}")
             if not click_job_card(page, job):
                 return False, "Failed to click job card"
             page.wait_for_timeout(timeout_2s)

@@ -270,7 +270,6 @@ def start_conversation(instruction):
 def set_current_job_chat_id(chat_id):
     global _current_job_chat_id
     _current_job_chat_id = chat_id
-    print(f"Current job chat_id: {_current_job_chat_id}")
 
 
 def ask_text_from_ai(question, validation=None):
@@ -515,10 +514,7 @@ def start_current_job_query_chat(job_details):
         )
 
         set_current_job_chat_id(response.id)
-        print("Current job details chat id:", _current_job_chat_id)
-
         raw_output = (response.output_text or "").strip()
-        print("Job relevancy status from AI (raw): ", raw_output)
         relevancy_status = transform_to_object(raw_output)
         return relevancy_status
     except Exception as e:

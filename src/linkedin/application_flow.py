@@ -194,31 +194,11 @@ def contact_recruiter(page, job_details_section):
 
 
 def connect_recruiter(page, main_section, recruiter):
-    # connect_button = main_section.query_selector('button:has-text("Connect"), button[aria-label="Connect"]')
-    # pending_button = main_section.query_selector('button:has-text("Pending"), button[aria-label="Pending"]')
-    # if not connect_button and not pending_button:
-    #     more_button = main_section.query_selector('button:has-text("More"), button[aria-label="More"]')
-    #     if more_button:
-    #         more_button.click()
-    #         page.wait_for_timeout(timeout_1s)
-    #         connect_button = main_section.query_selector('div[class*="dropdown"] span:has-text("Connect")')
-    #         if not connect_button and not pending_button:
-    #             pending_button = main_section.query_selector('div[class*="dropdown"] span:has-text("Pending")')
-    #
-    # if connect_button:
-    #     if connect_button.inner_text() == "Remove Connection":
-    #         return False, "Recruiter already connected"
-    #     elif connect_button.inner_text() != "Connect":
-    #         return False, f"Found {connect_button.inner_text()} button instead of 'Connect'"
-    # else:
-    #     if pending_button and pending_button.inner_text() == "Pending":
-    #         return False, "Connection pending"
-    #     return False, "Failed to find connect button"
-
     connect_button_selector = recruiter.get('connectButton', {}).get('selector')
     if not connect_button_selector:
         return False, "Failed to find connect button selector"
-    connect_button = main_section.query_selector(connect_button_selector)
+    connect_button = (main_section.query_selector(connect_button_selector)
+                      or page.query_selector(connect_button_selector))
     if not connect_button:
         return False, "Failed to find connect button"
     connect_button.click()
@@ -248,11 +228,11 @@ def connect_recruiter(page, main_section, recruiter):
 def message_recruiter(page, main_section, recruiter):
     recruiter_name = recruiter.get('name')
     print(f"Sending message to recruiter '{recruiter_name}'")
-    # msg_button = main_section.query_selector('button:has-text("Message"), button[aria-label="Message"]')
-    msg_button_selector = main_section.query_selector(recruiter.get('messageButton', {}).get('selector'))
+    msg_button_selector = recruiter.get('messageButton', {}).get('selector')
     if not msg_button_selector:
         return False, "Failed to find message button selector"
-    msg_button = main_section.query_selector(msg_button_selector)
+    msg_button = (main_section.query_selector(msg_button_selector)
+                  or page.query_selector(msg_button_selector))
     if not msg_button:
         return False, "Failed to find message button"
     if msg_button.is_disabled():
@@ -261,8 +241,8 @@ def message_recruiter(page, main_section, recruiter):
     page.wait_for_timeout(timeout_2s)
     msg_form_el = page.query_selector('form[class*="msg-form"]')
     msg_form = parse_message_form(msg_form_el.inner_html())
-    input_sub_selector = msg_form.get("fields", {}).get('subject', {}).get('selector')
     recruiter_message = get_recruiter_message(recruiter_name)
+    input_sub_selector = msg_form.get("fields", {}).get('subject', {}).get('selector')
     if input_sub_selector:
         subject_input = msg_form_el.query_selector(input_sub_selector)
         subject_input.type(recruiter_message.get("subject", ''), delay=2)

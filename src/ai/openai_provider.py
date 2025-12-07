@@ -559,7 +559,7 @@ def _get_user_detail_conv_id():
 
     instruction_to_ai = get_ai_instructions_data()
     if instruction_to_ai:
-        print("Sending instructions to conversation...\n", changed_qnas)
+        print("Sending instructions to conversation...\n", instruction_to_ai)
         user_detail_chat_id = send_instruction_to_chat(user_detail_chat_id, instruction_to_ai)
         print(f"New user_detail_chat_id: {user_detail_chat_id}")
         clear_ai_instructions_data()

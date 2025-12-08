@@ -183,6 +183,7 @@ def parse_profile(profile_detail_html):
         model=OPENAI_MODEL,
         input=f"""
             Extract the person details and available control buttons from the HTML below and output JSON following this structure. Return {{}} if not none.
+            Usually, if a valid 'Connect' button found that means they are not connected yet.
             {json.dumps(person_detail_and_controls_structure, indent=2)}
             Return valid JSON only. HTML:
             {profile_detail_html}
@@ -201,7 +202,7 @@ def parse_message_form(msg_form_html):
     msg_form_structure = {
         "message_form": {
             "id": "str:<form id>",
-            "headline": "str:<form headline>",
+            "headline": "str:<form title or header>",
             "fields": {
                 "subject": {
                     "type": "str:<field type>",
@@ -226,6 +227,11 @@ def parse_message_form(msg_form_html):
             ],
             "controls": {
                 "send": {
+                    "label": "str:<label of button>",
+                    "selector": "str:<selector of button>",
+                    "isEnabled": "bool:<if indicates 'enabled'>"
+                },
+                "close": {
                     "label": "str:<label of button>",
                     "selector": "str:<selector of button>",
                     "isEnabled": "bool:<if indicates 'enabled'>"

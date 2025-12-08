@@ -17,11 +17,12 @@ def find_easy_apply_button(job_details_section):
     if not job_details_section:
         return False, "Job details not found"
 
-    easy_apply_button = job_details_section.query_selector(
-        'button[aria-label^="Easy Apply"]'
-    )
+    easy_apply_button = job_details_section.query_selector('button:has-text("Easy Apply")')
     if not easy_apply_button or not easy_apply_button.is_enabled():
-        applied_message = job_details_section.query_selector('.artdeco-inline-feedback[role="alert"]').inner_text()
+        applied_message = "Easy Apply button not found"
+        alert_el = job_details_section.query_selector('.artdeco-inline-feedback[role="alert"]')
+        if alert_el:
+            applied_message = alert_el.inner_text()
         return False, applied_message
 
     return True, easy_apply_button
@@ -99,7 +100,7 @@ def apply_job(page, ignore_relevancy=False):
     try:
         print("------------------------- Applying job -------------------------")
         job_details_section = page.wait_for_selector(
-            'div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"]',
+            'main :is(div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"])',
             timeout=timeout_5s,
         )
         job_details = extract_job_details(job_details_section)
@@ -239,7 +240,7 @@ def message_recruiter(page, main_section, recruiter):
         return False, "Message button is disabled"
     msg_button.click()
     page.wait_for_timeout(timeout_2s)
-    msg_form_el = page.query_selector('form[class*="msg-form"]')
+    msg_form_el = page.query_selector('div[role="dialog"][aria-label="Messaging"]')
     msg_form = parse_message_form(msg_form_el.inner_html())
     recruiter_message = get_recruiter_message(recruiter_name)
     input_sub_selector = msg_form.get("fields", {}).get('subject', {}).get('selector')

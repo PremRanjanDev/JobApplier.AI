@@ -32,9 +32,10 @@ KEYS_DIR = BASE_DIR / "keys"
 OUTPUT_DIR = BASE_DIR / "output"
 
 # User data paths
+RESUME_FOLDER = MY_DATA_DIR / "resume"
 QNA_LIST_FILE = MY_DATA_DIR / "qna_list.txt"
 INSTRUCTIONS_FILE = MY_DATA_DIR / "instructions_to_ai.txt"
-RESUME_FOLDER = MY_DATA_DIR / "resume"
+JOB_URLS_FILE = MY_DATA_DIR / "apply_with_urls.txt"
 
 # System data paths
 CACHE_FILE = SYS_DATA_DIR / "qnas_cache.json"

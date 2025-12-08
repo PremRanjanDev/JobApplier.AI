@@ -1,1 +1,1 @@
-<add your openai api key here>
+<add your openai api key here or do `export OPENAI_API_KEY="sk-..."`>

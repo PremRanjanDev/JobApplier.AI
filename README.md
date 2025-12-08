@@ -5,43 +5,62 @@ auto-fill “Easy Apply” flows (currently implemented for LinkedIn).
 
 ---
 
-## Quickstart (macOS)
+## Quickstart
 
-1. Clone / open the workspace in VS Code (project root = repository root).
-2. Create and activate a Python venv:
+1. Clone and open the workspace in the code editor (project root = repository root).
+    ```bash
+    git clone https://github.com/PremRanjanDev/JobApplier.AI.git
+    ```
+   _Perform next commands in project's root directory._
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-```
+2. Create a virtual environment (Python 3.x):
+    ```bash
+    python -m venv .venv
+    ```
 
-3. Install dependencies and Playwright browsers:
+3. Activate the virtual environment:
+    - macOS / Linux:
+       ```bash
+       source .venv/bin/activate
+       ```
+    - Windows:
+       ```bash
+       .venv\Scripts\Activate.ps1
+       ```
 
-```bash
-pip install -r requirements.txt
-playwright install
-```
+4. Install dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
 
-4. Provide API keys:
+5. Install Playwright browsers:
+    ```bash
+    playwright install
+    ```
 
-- OpenAI: set env var or place key in keys/openai-key.txt
+6. Provide API keys:
+    - OpenAI: set env var (using below command) or place key in keys/openai-key.txt
+    ```bash
+    export OPENAI_API_KEY="sk-..."
+    ```
+    - (Optional) Gemini: export GEMINI_API_KEY or place in keys/gemini-key.txt
 
-```bash
-export OPENAI_API_KEY="sk-..."
-```
+7. Add user data:
+    - Put a single resume file in `my_data/resume/`
+    - Edit `src/config.py` for JOB_KEYWORDS, JOB_LOCATION, RELEVANCY_PERCENTAGE (optional), EXCLUDE_COMPANIES (optional)
+      and
+      other if required.
+    - Edit `my_data/qna_list.txt` with extra user facts (optional)
+    - Edit `my_data/instructions_to_ai.txt` with custom instructions for the AI (optional)
 
-- (Optional) Gemini: export GEMINI_API_KEY or place in keys/gemini-key.txt
-
-5. Add user data:
-
-- Put a single resume file in `my_data/resume/`
-- Edit `my_data/qna_list.txt` with extra user facts (optional)
-
-6. Run:
-
-```bash
-python src/main.py
-```
+8. Run:
+    - For search and apply:
+        - Add the job_KEYWORDS and JOB_LOCATION in `src/config.py` and run:
+    - For selected job URLs:
+        - Add the job URLs to `my_data/easy_apply_urls_only.txt` and run:
+    ```bash
+    python src/main.py
+    ```
 
 ---
 
@@ -117,7 +136,7 @@ Notes:
 
 - Multiple files in `my_data/resume/` — keep only one resume file.
 - Missing or invalid OpenAI key — AI calls will fail.
-- Playwright browsers not installed — run `playwright install`.
+- Playwright browser not installed — run `playwright install`.
 - LinkedIn UI changes require selector updates.
 
 ---
@@ -146,57 +165,3 @@ Notes:
 - Playwright errors: run `playwright install` and ensure Chromium is available.
 - Permission/file errors: ensure `my_data/` and `sys_data/` exist and are writable.
 - Slow or rate-limited AI responses: check API quotas and model configuration (`OPENAI_MODEL` in config).
-
----
-
-If you want, I can:
-
-- Commit this README.md into the workspace for you.
-- Add a short CONTRIBUTING.md or Troubleshooting section with concrete errors and fixes.
-
-```// filepath: /Users/premranjan/code/learn/JobApplier.AI/README.md
-
-# JobApplier.AI
-
-AI-powered job-application automation combining Playwright browser automation with LLM helpers to parse job postings and auto-fill “Easy Apply” flows (currently implemented for LinkedIn).
-
----
-
-## Quickstart (macOS)
-
-1. Clone / open the workspace in VS Code (project root = repository root).
-2. Create and activate a Python venv:
-```bash
-python -m venv .venv
-source .venv/bin/activate
-```
-
-3. Install dependencies and Playwright browsers:
-
-```bash
-pip install -r requirements.txt
-playwright install
-```
-
-4. Provide API keys:
-
-- OpenAI: set env var or place key in keys/openai-key.txt
-
-```bash
-export OPENAI_API_KEY="sk-..."
-```
-
-- (Optional) Gemini: export GEMINI_API_KEY or place in keys/gemini-key.txt
-
-5. Add user data:
-
-- Put a single resume file in `my_data/resume/`
-- Edit `my_data/qna_list.txt` with extra user facts (optional)
-
-6. Run:
-
-```bash
-python src/main.py
-```
-
----

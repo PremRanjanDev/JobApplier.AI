@@ -137,7 +137,8 @@ def is_new_resume(resume_file_path):
 
 def get_resume_file():
     if not os.path.exists(RESUME_FOLDER):
-        raise RuntimeError(f"Resume folder not found: {RESUME_FOLDER}")
+        os.makedirs(RESUME_FOLDER, exist_ok=True)
+        raise RuntimeError(f"Place resume file in: {RESUME_FOLDER}")
 
     resume_files = [fn for fn in os.listdir(RESUME_FOLDER)
                     if os.path.isfile(os.path.join(RESUME_FOLDER, fn))]

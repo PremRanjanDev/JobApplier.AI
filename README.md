@@ -1,7 +1,23 @@
 # JobApplier.AI
 
 AI-powered job-application automation combining Playwright browser automation with LLM helpers to parse job postings and
-auto-fill “Easy Apply” flows (currently implemented for LinkedIn).
+autofill "Easy Apply" flows (currently implemented for LinkedIn).
+---
+
+## Prerequisites
+
+Before running this project, make sure you have:
+
+1. Python 3.x and pip
+    - **Python 3.9+**
+        - macOS / Linux: `python3 --version` or Windows: `py --version`
+    - **pip** (Python package manager)
+        - macOS / Linux: `python3 -m pip --version` or Windows: `py -m pip --version`
+
+2. AI API keys
+    - Get or create an **OpenAI** API key from: [OpenAI Dashboard - API key ](https://platform.openai.com/api-keys)
+    - (Optional) Get or create a **Gemini** API key
+      from: [Google AI Studio - API key](https://aistudio.google.com/app/api-keys)
 
 ---
 
@@ -15,7 +31,7 @@ auto-fill “Easy Apply” flows (currently implemented for LinkedIn).
 
 2. Create a virtual environment (Python 3.x):
     ```bash
-    python -m venv .venv
+    python3 -m venv .venv
     ```
 
 3. Activate the virtual environment:
@@ -38,12 +54,11 @@ auto-fill “Easy Apply” flows (currently implemented for LinkedIn).
     playwright install
     ```
 
-6. Provide API keys:
-    - OpenAI: set env var (using below command) or place key in keys/openai-key.txt
-    ```bash
-    export OPENAI_API_KEY="sk-..."
-    ```
-    - (Optional) Gemini: export GEMINI_API_KEY or place in keys/gemini-key.txt
+6. Provide API keys (Get API key steps in `Prerequisites`):
+    - OpenAI: Place OpenAI API key in `keys/openai-key.txt` or export as environment variable:
+      `export OPENAI_API_KEY="sk-..."`
+    - (Optional) Gemini: Place in `keys/gemini-key.txt` or export as environment variable:
+      `export GEMINI_API_KEY="AIz..."`
 
 7. Add user data:
     - Put a single resume file in `my_data/resume/`
@@ -54,12 +69,12 @@ auto-fill “Easy Apply” flows (currently implemented for LinkedIn).
     - Edit `my_data/instructions_to_ai.txt` with custom instructions for the AI (optional)
 
 8. Run:
-    - For search and apply:
-        - Add the job_KEYWORDS and JOB_LOCATION in `src/config.py` and run:
+    - To search and apply:
+        - Add in the `JOB_KEYWORDS` and `JOB_LOCATION` in `src/config.py` and run:
     - For selected job URLs:
         - Add the job URLs to `my_data/easy_apply_urls_only.txt` and run:
     ```bash
-    python src/main.py
+    python3 src/main.py
     ```
 
 ---

@@ -49,9 +49,9 @@ Before running this project, make sure you have:
     pip install -r requirements.txt
     ```
 
-5. Install Playwright browsers:
+5. Install Playwright Chromium browser:
     ```bash
-    playwright install
+    playwright install chromium
     ```
 
 6. Provide API keys (Get API key steps in `Prerequisites`):

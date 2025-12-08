@@ -172,7 +172,8 @@ def contact_recruiter(page, job_details_section):
 
         rct_conn_status, rct_conn_msg = False, ""
         if (CONNECT_RECRUITER and not recruiter.get('isConnected')
-                and "pending" not in recruiter.get('connectionStatus')):
+                and "pending" not in recruiter.get('connectionStatus', '').lower()
+                and recruiter.get('connectButton', {}).get('label') != "Pending"):
             print("Connecting to recruiter...")
             rct_conn_status, rct_conn_msg = connect_recruiter(new_tab, main_section, recruiter)
             print(f"Recruiter connection status: {rct_conn_status}, message: {rct_conn_msg}")

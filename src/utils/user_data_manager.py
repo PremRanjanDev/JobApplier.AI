@@ -57,10 +57,30 @@ def read_qna_list_qnas():
         line = raw.strip()
         if ':' not in line:
             continue
-        q, a = line.rsplit(':', 1)
-        qna[q.strip()] = a.strip()
+
+        q, a = split_qna(line)
+        if q is None:
+            continue
+
+        qna[q] = a
 
     return headers, qna
+
+
+def split_qna(line):
+    line = line.rstrip()
+    if line.endswith(':'):
+        return line[:-1].strip(), ""
+
+    for i in range(len(line) - 1, -1, -1):
+        if line[i] != ':':
+            continue
+        if line[i:i + 3] == '://':
+            continue
+        q = line[:i].strip()
+        a = line[i + 1:].strip()
+        return q, a
+    return line, ""
 
 
 def get_changed_qna_list(user_detail_chat, is_new_conv=False):

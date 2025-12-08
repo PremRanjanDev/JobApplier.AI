@@ -260,6 +260,12 @@ def message_recruiter(page, main_section, recruiter):
     if not send_btn or not send_btn.is_enabled():
         return False, "Failed to find send button"
     send_btn.click()
+    page.wait_for_timeout(timeout_2s)
+    close_btn_selector = msg_form.get("controls", {}).get('close', {}).get('selector')
+    if close_btn_selector:
+        close_btn = msg_form_el.query_selector(close_btn_selector)
+        if close_btn:
+            close_btn.click()
 
     return True, "Message sent"
 

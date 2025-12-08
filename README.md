@@ -72,7 +72,7 @@ Before running this project, make sure you have:
     - To search and apply:
         - Add in the `JOB_KEYWORDS` and `JOB_LOCATION` in `src/config.py` and run:
     - For selected job URLs:
-        - Add the job URLs to `my_data/easy_apply_urls_only.txt` and run:
+        - Add the job URLs to `my_data/apply_with_urls.txt` and run:
     ```bash
     python3 src/main.py
     ```

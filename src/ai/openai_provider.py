@@ -16,6 +16,19 @@ _openai_client = None
 _user_detail_chat_id = None
 _current_job_chat_id = None
 
+BUTTON_JSON = {
+    "label": "<str: label of button>",
+    "selector": "<str: selector of button>",
+    "isEnabled": "<bool: indicate if 'enabled'>",
+}
+
+INPUT_FIELD_JSON = {
+    "type": "<str: field type>",
+    "label": "<str: field label>",
+    "selector": "<str: field selector>",
+    "value": "<str: field current value>"
+}
+
 parse_form_tools = [
     {
         "type": "function",
@@ -127,11 +140,7 @@ def parse_hiring_team(job_detail_html):
                 "designation": "str:<designation of person>",
                 "profileLink": "str:<profile link of person>",
                 "isJobPoster": "bool:<if indicates 'Job poster'>",
-                "messageButton": {
-                    "label": "str:<label of button>",
-                    "selector": "str:<selector of button>",
-                    "isEnabled": "bool:<if indicates 'enabled'>",
-                }
+                "messageButton": BUTTON_JSON
             }
         ]
     }
@@ -159,22 +168,10 @@ def parse_profile(profile_detail_html):
             "profileLink": "str:<profile link of person>",
             "isConnected": "bool:<if person is connected with current user>",
             "connectionStatus": "str:<connection status of person with current user: Connection Pending, Already connected, Not invited>",
-            "messageButton": {
-                "label": "str:<label of button>",
-                "selector": "str:<selector of button>",
-                "isEnabled": "bool:<if indicates 'enabled'>",
-            },
-            "connectButton": {
-                "label": "str:<label of button>",
-                "selector": "str:<selector of button>",
-                "isEnabled": "bool:<if indicates 'enabled'>",
-            },
+            "messageButton": BUTTON_JSON,
+            "connectButton": BUTTON_JSON,
             "otherButtons": [
-                {
-                    "label": "str:<label of button>",
-                    "selector": "str:<selector of button>",
-                    "isEnabled": "bool:<if indicates 'enabled'>",
-                }
+                BUTTON_JSON
             ]
         }
     }
@@ -204,45 +201,18 @@ def parse_message_form(msg_form_html):
             "id": "str:<form id>",
             "headline": "str:<form title or header>",
             "fields": {
-                "subject": {
-                    "type": "str:<field type>",
-                    "label": "str:<field label>",
-                    "selector": "str:<field selector>",
-                    "value": "str:<field value>"
-                },
-                "body": {
-                    "type": "str:<field type>",
-                    "label": "str:<field label>",
-                    "selector": "str:<field selector>",
-                    "value": "str:<field value>"
-                }
+                "subject": INPUT_FIELD_JSON,
+                "body": INPUT_FIELD_JSON
             },
             "other_fields": [
-                {
-                    "type": "str:<field type>",
-                    "label": "str:<field label>",
-                    "selector": "str:<field selector>",
-                    "value": "str:<field value>"
-                }
+                INPUT_FIELD_JSON
             ],
             "controls": {
-                "send": {
-                    "label": "str:<label of button>",
-                    "selector": "str:<selector of button>",
-                    "isEnabled": "bool:<if indicates 'enabled'>"
-                },
-                "close": {
-                    "label": "str:<label of button>",
-                    "selector": "str:<selector of button>",
-                    "isEnabled": "bool:<if indicates 'enabled'>"
-                }
+                "send": BUTTON_JSON,
+                "close": BUTTON_JSON
             },
             "other_controls": [
-                {
-                    "label": "str:<label of button>",
-                    "selector": "str:<selector of button>",
-                    "isEnabled": "bool:<if indicates 'enabled'>"
-                }
+                BUTTON_JSON
             ]
         }
 
@@ -358,7 +328,11 @@ def ask_recruiter_connect_note_from_ai(recruiter_name: str) -> str:
     client = _get_openai_client()
     response = client.responses.create(
         model=OPENAI_MODEL,
-        input=f"""I have applied the role and sending connection request to the recruiter. Write a LinkedIn connection request note for recruiter: {recruiter_name}, use first name. Keep the note within 300 characters.""",
+        input=f"""
+                I have applied the role and sending connection request to the recruiter. 
+                Write a LinkedIn connection request note for recruiter: {recruiter_name}, use first name. 
+                Keep the note within 300 characters.
+            """,
         previous_response_id=_current_job_chat_id or _user_detail_chat_id,
     )
     return response.output_text.strip()
@@ -369,8 +343,7 @@ def ask_linkedin_connection_note_from_ai(job_title, company_name, recruiter_name
     client = _get_openai_client()
     response = client.responses.create(
         model=OPENAI_MODEL,
-        input=f"""Write a LinkedIn connection request note for recruiter: {recruiter_name} 
-                 for job {job_title} at {company_name}""",
+        input=f"""Write a LinkedIn connection request note for recruiter: {recruiter_name} for job {job_title} at {company_name}""",
     )
     return response.output_text
 
@@ -397,9 +370,9 @@ def upload_resume_and_start_chat(file_path):
                     "Guidelines:\n"
                     "- Answer using information from the resume and any new details I provide.\n"
                     "- If information is missing, unclear, or not applicable, return ''.\n"
-                    "- Numeric answers must be integers.\n"
-                    "- For items such as headline, summary or cover letter, craft role-appropriate response.\n"
-                    "- Output answers only, no explanations, formatting, quotes, or extra text."
+                    "- Numeric answer must be an integer.\n"
+                    "- For item such as headline, summary or cover letter, craft role-appropriate response.\n"
+                    "- Output answer only, no explanations, formatting, quotes, or extra text."
                 )
             }
         ]
@@ -502,12 +475,12 @@ def start_current_job_query_chat(job_details):
         "but respond NOW only with the JSON object described below.\n\n"
         "Return ONLY a single JSON object with this exact structure and no extra text, comments, or explanations:\n"
         "{\n"
-        '  \"relevancyPercentage\": number<number from 0 to 100>,\n'
-        '  \"isRelevant\": boolean <true or false>,\n'
-        '  \"match\": \"str <Key things which matched, in very short>,\"\n'
-        '  \"mismatch\": \"str <Key things which mismatched, in very short>\"\n'
+        '  \"relevancyPercentage\": <number: relevancy percentage from 0 to 100>,\n'
+        '  \"isRelevant\": <bool: indicate if its relevant>,\n'
+        '  \"match\": \"<str: Key things which matched, in very short>,\"\n'
+        '  \"mismatch\": \"<str: Key things which mismatched, in very short>\"\n'
         "}\n\n"
-        "Use your best judgment for relevancyPercentage and isRelevant.\n\n"
+        "Use your best judgment for 'relevancyPercentage' and 'isRelevant'.\n\n"
         f"JOB_DETAILS:\n{job_details}"
     )
     try:

@@ -3,11 +3,11 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "jobapplier-ai"
+name = "JobApplier-AI"
 version = "0.1.0"
 description = "AI-powered Job Application Automation"
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [
     {name = "Prem Ranjan", email = "premranjandev@live.com"}
@@ -24,3 +24,6 @@ dev = [
     "black>=23.0.0",
     "flake8>=6.0.0",
 ]
+
+[tool.poetry]
+package-mode = false

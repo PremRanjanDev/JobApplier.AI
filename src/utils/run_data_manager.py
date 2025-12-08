@@ -15,7 +15,7 @@ def _load_run_data():
         if isinstance(ja_list, list) and len(ja_list) > 10:
             _run_data["job_applications"] = ja_list[:10]
     except Exception as e:
-        print(f"Failed to load run data: {e}")
+        print(f"Could not load existing run_data.")
 
 def get_run_data():
     """ Return the entire run_data dict. """

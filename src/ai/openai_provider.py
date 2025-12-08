@@ -537,7 +537,7 @@ def _get_user_detail_conv_id():
     try:
         resume_path = get_resume_file()
     except Exception as e:
-        sys.exit(f"Invalid resume file: {e}")
+        sys.exit(f"Invalid resume file. {e}")
 
     user_detail_chat = run_data.get(key, {})
     user_detail_chat_id = user_detail_chat.get("chat_id")

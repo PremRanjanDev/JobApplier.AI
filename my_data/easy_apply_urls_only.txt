@@ -1,5 +1,0 @@
------------------------- LinkedIn Easy Apply – Job URLs -------------------------
-| Add your LinkedIn Easy Apply job post URLs below, one per line.                |
-| If URLs appear here, only they will be processed in the run.                   |
-| ~~ URLs will be removed automatically after a successful application. ~~       |
-----------------------------------------------------------------------------------

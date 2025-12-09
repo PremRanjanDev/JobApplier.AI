@@ -222,6 +222,8 @@ def connect_recruiter(page, main_section, recruiter):
     send_button = invite_model.query_selector('button:has-text("Send"), button[aria-label="Send"]')
     if not send_button:
         return False, "Failed to find send button"
+    if not send_button.is_enabled():
+        return False, "Send button is disabled"
     send_button.click()
     page.wait_for_timeout(timeout_2s)
     return True, "Connection request sent to recruiter"

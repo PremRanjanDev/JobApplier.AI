@@ -229,7 +229,15 @@ def connect_recruiter(page, main_section, recruiter):
     return True, "Connection request sent to recruiter"
 
 
+def close_any_msg_form(page):
+    msg_forms = page.query_selector_all('div[role="dialog"][aria-label="Messaging"]')
+    for msg_form in msg_forms:
+        close_btn = msg_form.query_selector('button svg[data-test-icon*="close"]')
+        if close_btn:
+            close_btn.click()
+
 def message_recruiter(page, main_section, recruiter):
+    close_any_msg_form(page)
     recruiter_name = recruiter.get('name')
     print(f"Sending message to recruiter '{recruiter_name}'")
     msg_button_selector = recruiter.get('messageButton', {}).get('selector')
@@ -264,11 +272,7 @@ def message_recruiter(page, main_section, recruiter):
         return False, "Failed to find send button"
     send_btn.click()
     page.wait_for_timeout(timeout_2s)
-    close_btn_selector = msg_form.get("controls", {}).get('close', {}).get('selector')
-    if close_btn_selector:
-        close_btn = msg_form_el.query_selector(close_btn_selector)
-        if close_btn:
-            close_btn.click()
+    close_any_msg_form(page)
 
     return True, "Message sent"
 

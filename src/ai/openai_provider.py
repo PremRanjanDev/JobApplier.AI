@@ -417,8 +417,8 @@ def send_qna_list_to_chat(previous_chat_id, qnas_dict):
         update_run_data_udc(response.id, "qna_list", run_data_qna_list)
         return response.id
     except Exception as e:
-        print(f"Failed to send qna_list to chat: {e}")
-        return None
+        print(f"Failed to send qna_list to chat. {e}")
+        raise e
 
 
 def send_instruction_to_chat(previous_chat_id, instructions):
@@ -444,8 +444,8 @@ def send_instruction_to_chat(previous_chat_id, instructions):
         update_run_data_udc(response.id, "instructions", run_data_instructions)
         return response.id
     except Exception as e:
-        print(f"Failed to send qna_list to chat: {e}")
-        return None
+        print(f"Failed to send qna_list to chat. {e}")
+        raise e
 
 def start_current_job_query_chat(job_details):
     """
@@ -496,9 +496,8 @@ def start_current_job_query_chat(job_details):
         relevancy_status = transform_to_object(raw_output)
         return relevancy_status
     except Exception as e:
-        print(f"Failed to send job_details to chat: {e}")
-        return None
-
+        print(f"Failed to send job_details to chat. {e}")
+        raise e
 
 def _get_user_detail_conv_id():
     """

@@ -94,54 +94,46 @@ def process_form_step(page, application_form, previous_state):
 
     return True, current_state
 
-
 def apply_job(page, ignore_relevancy=False):
     """Applies to a job using the Easy Apply button, handling multi-step forms."""
-    try:
-        print("------------------------- Applying job -------------------------")
-        job_details_section = page.wait_for_selector(
-            'main :is(div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"])',
-            timeout=timeout_5s,
-        )
-        job_details = extract_job_details(job_details_section)
-        print(f"Job details: {json.dumps(job_details, indent=2)}")
-        company = job_details.get('company', "").lower()
-        if not company or not job_details.get('title') or not job_details.get('description'):
-            print(f"Skipping {company} due to missing details")
-            return False, "Missing job details"
-        if EXCLUDE_COMPANIES and any(excluded.lower() in company for excluded in EXCLUDE_COMPANIES):
-            print(f"Skipping {company} due to EXCLUDE_COMPANIES")
-            return False, f"Excluded company '{company}'"
+    print("------------------------- Applying job -------------------------")
+    job_details_section = page.wait_for_selector(
+        'main :is(div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"])',
+        timeout=timeout_5s,
+    )
+    job_details = extract_job_details(job_details_section)
+    print(f"Job details: {json.dumps(job_details, indent=2)}")
+    company = job_details.get('company', "").lower()
+    if not company or not job_details.get('title') or not job_details.get('description'):
+        print(f"Skipping {company} due to missing details")
+        return False, "Missing job details"
+    if EXCLUDE_COMPANIES and any(excluded.lower() in company for excluded in EXCLUDE_COMPANIES):
+        print(f"Skipping {company} due to EXCLUDE_COMPANIES")
+        return False, f"Excluded company '{company}'"
 
-        is_open, easy_apply_btn_or_msg = find_easy_apply_button(job_details_section)
-        if not is_open:
-            return False, easy_apply_btn_or_msg
+    is_open, easy_apply_btn_or_msg = find_easy_apply_button(job_details_section)
+    if not is_open:
+        return False, easy_apply_btn_or_msg
 
-        relevancy_status = start_current_job_query_chat(job_details)
-        relevancy_percentage = relevancy_status.get("relevancyPercentage", 0)
-        print(f"Relevancy status: {json.dumps(relevancy_status, indent=2)}")
-        if ignore_relevancy:
-            print(f"Ignoring relevancy check due to ignore_relevancy flag")
-        elif relevancy_percentage < RELEVANCY_PERCENTAGE:
-            return False, "Job not relevant"
+    relevancy_status = start_current_job_query_chat(job_details)
+    relevancy_percentage = relevancy_status.get("relevancyPercentage", 0)
+    print(f"Relevancy status: {json.dumps(relevancy_status, indent=2)}")
+    if ignore_relevancy:
+        print(f"Ignoring relevancy check due to ignore_relevancy flag")
+    elif relevancy_percentage < RELEVANCY_PERCENTAGE:
+        return False, "Job not relevant"
 
-        easy_apply_btn_or_msg.click()
-        page.wait_for_timeout(timeout_1s)
-        status, message = handle_application_form(page)
-        if status:
-            print("Job applied successfully!")
-            if CONNECT_RECRUITER or MESSAGE_RECRUITER:
-                print("Contacting recruiter...")
-                rcr_status, rcr_msg = contact_recruiter(page, job_details_section)
-                print(f"Recruiter contact status: {rcr_status}, message: {rcr_msg}")
+    easy_apply_btn_or_msg.click()
+    page.wait_for_timeout(timeout_1s)
+    status, message = handle_application_form(page)
+    if status:
+        print("Job applied successfully!")
+        if CONNECT_RECRUITER or MESSAGE_RECRUITER:
+            print("Contacting recruiter...")
+            rcr_status, rcr_msg = contact_recruiter(page, job_details_section)
+            print(f"Recruiter contact status: {rcr_status}, message: {rcr_msg}")
 
-        return status, message
-
-    except Exception as e:
-        print(f"Error applying the job: {e}")
-        dismiss_job_apply(page, None)
-        return False, str(e)
-
+    return status, message
 
 def contact_recruiter(page, job_details_section):
     new_tab = None

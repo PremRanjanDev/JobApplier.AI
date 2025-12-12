@@ -1,9 +1,11 @@
 import datetime
 
+from openai import RateLimitError, OpenAIError
+
 from config import JOB_URLS_FILE
 from utils.run_data_manager import update_run_data_job_applications
 from utils.txt_utils import remove_line_from
-from .application_flow import apply_job
+from .application_flow import apply_job, dismiss_job_apply
 from .constants import timeout_2s
 from .job_search import fetch_job_list, click_job_card
 
@@ -37,25 +39,36 @@ def apply_jobs_easy_apply(page, keywords, location):
             break
         print(f"Found {len(jobs)} jobs on the current page.")
         for job in jobs:
-            if not click_job_card(page, job):
-                return False, "Failed to click job card"
-            page.wait_for_timeout(timeout_2s)
-            applied, status = apply_job(page)
-            if applied:
-                jobs_applied += 1
-                print("Successfully applied: ", jobs_applied)
-            elif "limit" in status:
-                print(f"Alert: {status}\nEasy Apply limit reached. Stopping application process!!")
-                update_run_data_job_applications(job_application_id,
-                                                 keywords,
-                                                 location,
-                                                 current_page,
-                                                 applied,
-                                                 "Easy Apply limit reached")
-                return
-            else:
-                print(f"Failed to apply. Status: {status}")
-            update_run_data_job_applications(job_application_id, keywords, location, current_page, applied, status)
+            try:
+                if not click_job_card(page, job):
+                    return False, "Failed to click job card"
+                page.wait_for_timeout(timeout_2s)
+                applied, status = apply_job(page)
+                if applied:
+                    jobs_applied += 1
+                    print("Successfully applied: ", jobs_applied)
+                elif "limit" in status:
+                    print(f"Alert: {status}\nEasy Apply limit reached. Stopping application process!!")
+                    update_run_data_job_applications(job_application_id,
+                                                     keywords,
+                                                     location,
+                                                     current_page,
+                                                     applied,
+                                                     "Easy Apply limit reached")
+                    return None
+                else:
+                    print(f"Failed to apply. Status: {status}")
+                update_run_data_job_applications(job_application_id, keywords, location, current_page, applied, status)
+            except RateLimitError as e:
+                print("Rate limit exceeded:", e)
+                return False, "OpenAI Rate limit exceeded"
+            except OpenAIError as e:
+                print("Any OpenAI-related error:", e)
+                return False, "OpenAI error"
+            except Exception as e:
+                print(f"Error applying the job: {e}")
+            finally:
+                dismiss_job_apply(page, None)
         print(f"Page ({current_page}) finished.")
         next_page_button = page.query_selector(next_page_selector)
         if next_page_button:

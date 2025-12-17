@@ -227,6 +227,7 @@ def close_any_msg_form(page):
         close_btn = msg_form.query_selector('button svg[data-test-icon*="close"]')
         if close_btn:
             close_btn.click()
+            page.wait_for_timeout(timeout_1s)
 
 def message_recruiter(page, main_section, recruiter):
     close_any_msg_form(page)

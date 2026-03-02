@@ -41,7 +41,8 @@ Before running this project, make sure you have:
        ```
     - Windows:
        ```bash
-       .venv\Scripts\Activate.ps1
+       Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+      .venv\Scripts\Activate.ps1
        ```
 
 4. Install dependencies:
@@ -56,27 +57,28 @@ Before running this project, make sure you have:
 
 6. Provide API keys (Get API key steps in `Prerequisites`):
     - OpenAI: Place OpenAI API key in `keys/openai-key.txt` or export as environment variable:
-      `export OPENAI_API_KEY="sk-..."`
+        - Mac/Linux: `export OPENAI_API_KEY="sk-..."`
+        - Windows: `set OPENAI_API_KEY="sk-..."`
     - (Optional) Gemini: Place in `keys/gemini-key.txt` or export as environment variable:
-      `export GEMINI_API_KEY="AIz..."`
+        - Mac/Linux: `export GEMINI_API_KEY="AIz..."`
+        - Windows: `set GEMINI_API_KEY="AIz..."`
 
 7. Add user data:
-    - Put a single resume file in `my_data/resume/`
-    - Edit `src/config.py` for JOB_KEYWORDS, JOB_LOCATION, RELEVANCY_PERCENTAGE (optional), EXCLUDE_COMPANIES (optional)
-      and
-      other if required.
-    - Edit `my_data/qna_list.txt` with extra user facts (optional)
-    - Edit `my_data/instructions_to_ai.txt` with custom instructions for the AI (optional)
+    - Place a single resume file in the folder `my_data/resume/`.
+    - Edit `src/config.py` for `JOB_KEYWORDS`, `JOB_LOCATION`, `RELEVANCY_PERCENTAGE` (optional),
+      `EXCLUDE_COMPANIES` (optional) and other if required.
+    - Edit `my_data/qna_list.txt` with extra user facts.
+    - Edit `my_data/instructions_to_ai.txt` with custom instructions for the AI (optional).
 
 8. Run:
-    - To search and apply:
-        - Add in the `JOB_KEYWORDS` and `JOB_LOCATION` in `src/config.py` and run:
-    - For selected job URLs:
-        - Add the job URLs to `my_data/apply_with_urls.txt` and run:
-    ```bash
-    python3 src/main.py
-    ```
-
+    - (Either) To search and apply:
+        - Add in the `JOB_KEYWORDS` and `JOB_LOCATION` in `src/config.py`.
+    - (Or) For selected job URLs:
+        - Add the job URLs to `my_data/apply_with_urls.txt`.
+    - (Then) Run using command:
+        ```bash
+        python3 src/main.py
+        ```
 ---
 
 ## Project structure (important files)
@@ -110,7 +112,7 @@ Before running this project, make sure you have:
 ## Configuration & keys
 
 - Primary config in `src/config.py`. Important variables:
-    - OPENAI_MODEL, OPENAI_API_KEY resolution, LINKEDIN_STATE_FILE, HIDE_BROWSER.
+    - `OPENAI_MODEL`, `OPENAI_API_KEY` resolution, `LINKEDIN_STATE_FILE`, `HIDE_BROWSER`.
 - Key lookup order for OpenAI:
     1. Environment variable `OPENAI_API_KEY`
     2. `keys/openai-key.txt` (fallback)

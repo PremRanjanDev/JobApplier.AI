@@ -17,7 +17,7 @@ def get_text_answer(question, validation=None):
     if answer == "''":
         answer = ""
     question_lower = question.strip().lower()
-    if any(s not in question_lower for s in _non_caching_ques):
+    if not any(s in question_lower for s in _non_caching_ques):
         set_to_cache(cache_key, answer)
         append_qna_list(question, answer)
     print(f"Answer: {answer}")
@@ -42,7 +42,8 @@ def get_select_answer(question, options):
     answer = ask_select_from_ai(question, options)
     if answer == "''":
         answer = ""
-    if question.strip() not in _non_caching_ques:
+    question_lower = question.strip().lower()
+    if not any(s in question_lower for s in _non_caching_ques):
         set_to_cache(cache_key, answer)
         append_qna_list(question, answer)
     print(f"Selected option: {answer}")

@@ -38,7 +38,7 @@ def update_run_data_udc(user_detail_chat_id, prop_key: str, value: dict):
     print("Updating run data for user detail chat...")
     try:
         udc = _run_data.setdefault("user_detail_chat", {})
-        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now_iso = datetime.datetime.now().astimezone().isoformat()
         udc["chat_id"] = user_detail_chat_id
         udc["modal"] = OPENAI_MODEL
         udc["last_updated_at"] = now_iso
@@ -55,7 +55,7 @@ def update_run_data_job_applications(id, keywords, location, last_page, applied=
     """
     try:
         ja_list = _run_data.setdefault("job_applications", [])
-        now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        now_iso = datetime.datetime.now().astimezone().isoformat()
         entry = next((item for item in ja_list if item["id"] == id), None)
         if not entry:
             entry = {

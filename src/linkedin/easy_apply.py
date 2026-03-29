@@ -6,7 +6,7 @@ from config import JOB_URLS_FILE
 from utils.run_data_manager import update_run_data_job_applications
 from utils.txt_utils import remove_line_from
 from .application_flow import apply_job, dismiss_job_apply
-from .constants import timeout_2s
+from .constants import timeout_5s, timeout_2s
 from .job_search import fetch_job_list, click_job_card
 
 
@@ -14,7 +14,7 @@ def easy_apply_by_url(page, job_urls):
     """Performs the Easy Apply process given the list of job URLs."""
     for job_url in job_urls:
         page.goto(job_url)
-        page.wait_for_timeout(timeout_2s)
+        page.wait_for_timeout(timeout_5s)
         applied, status = apply_job(page, True)
         print(f"Job URL: {job_url}, applied: {applied}, status: {status}")
         if applied:
@@ -32,6 +32,8 @@ def apply_jobs_easy_apply(page, keywords, location):
     while True:
         print(f"Current page: ({current_page})")
         print("Fetching job listings.")
+        # Close any open job apply popups before clicking the next job card
+        dismiss_job_apply(page, None)
         page.wait_for_timeout(timeout_2s)
         jobs = fetch_job_list(page)
         if not jobs:
@@ -40,6 +42,8 @@ def apply_jobs_easy_apply(page, keywords, location):
         print(f"Found {len(jobs)} jobs on the current page.")
         for job in jobs:
             try:
+                # Close any open job apply popups before clicking the next job card
+                dismiss_job_apply(page, None)
                 if not click_job_card(page, job):
                     return False, "Failed to click job card"
                 page.wait_for_timeout(timeout_2s)

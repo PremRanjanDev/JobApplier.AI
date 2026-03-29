@@ -408,11 +408,12 @@ def send_qna_list_to_chat(previous_chat_id, qnas_dict):
             input=payload,
             previous_response_id=previous_chat_id
         )
+        print("QnA AI Context updated with response: ", response.output_text)
         run_data_qna_list = {
             "file_path": os.path.join(QNA_LIST_FILE),
             "last_modified": last_modified_iso(QNA_LIST_FILE)
         }
-        print("qna_list updated with AI feedback: ", response.output_text)
+        print("Updating trained data with new qnas")
         append_txt_records(TRAINED_DATA_FILE, qnas)
         update_run_data_udc(response.id, "qna_list", run_data_qna_list)
         return response.id

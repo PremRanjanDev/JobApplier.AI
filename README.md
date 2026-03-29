@@ -10,9 +10,11 @@ Before running this project, make sure you have:
 
 1. Python 3.x and pip
     - **Python 3.9+**
-        - Mac / Linux: `python3 --version` or Windows: `py --version`
+        - Mac / Linux: `python3 --version`
+        - Windows: `py --version`
     - **pip** (Python package manager)
-        - Mac / Linux: `python3 -m pip --version` or Windows: `py -m pip --version`
+        - Mac / Linux: `python3 -m pip --version`
+        - Windows: `py -m pip --version`
 
 2. AI API keys
     - Get or create an **OpenAI** API key from: [OpenAI Dashboard - API key ](https://platform.openai.com/api-keys)

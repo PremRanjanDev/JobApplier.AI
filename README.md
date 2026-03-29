@@ -10,9 +10,9 @@ Before running this project, make sure you have:
 
 1. Python 3.x and pip
     - **Python 3.9+**
-        - macOS / Linux: `python3 --version` or Windows: `py --version`
+        - Mac / Linux: `python3 --version` or Windows: `py --version`
     - **pip** (Python package manager)
-        - macOS / Linux: `python3 -m pip --version` or Windows: `py -m pip --version`
+        - Mac / Linux: `python3 -m pip --version` or Windows: `py -m pip --version`
 
 2. AI API keys
     - Get or create an **OpenAI** API key from: [OpenAI Dashboard - API key ](https://platform.openai.com/api-keys)
@@ -29,33 +29,31 @@ Before running this project, make sure you have:
     ```
    _Perform next commands in project's root directory._
 
-2. Create a virtual environment (Python 3.x):
-    ```bash
-    python3 -m venv .venv
-    ```
+2. Create and activate a virtual environment (Python 3.x):
+    - Mac / Linux:
+        ```bash
+        python3 -m venv .venv
+        source .venv/bin/activate
+        ```
 
-3. Activate the virtual environment:
-    - macOS / Linux:
-       ```bash
-       source .venv/bin/activate
-       ```
     - Windows:
-       ```bash
-       Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-      .venv\Scripts\Activate.ps1
-       ```
+        ```bash
+        py -m venv .venv
+        Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+        .venv\Scripts\Activate.ps1
+        ```
 
-4. Install dependencies:
+3. Install dependencies:
     ```bash
     pip install -r requirements.txt
     ```
 
-5. Install Playwright Chromium browser:
+4. Install Playwright Chromium browser:
     ```bash
     playwright install chromium
     ```
 
-6. Provide API keys (Get API key steps in `Prerequisites`):
+5. Provide API keys (Get API key steps in `Prerequisites`):
     - OpenAI: Place OpenAI API key in `keys/openai-key.txt` or export as environment variable:
         - Mac/Linux: `export OPENAI_API_KEY="sk-..."`
         - Windows: `set OPENAI_API_KEY="sk-..."`
@@ -63,22 +61,27 @@ Before running this project, make sure you have:
         - Mac/Linux: `export GEMINI_API_KEY="AIz..."`
         - Windows: `set GEMINI_API_KEY="AIz..."`
 
-7. Add user data:
+6. Add user data:
     - Place a single resume file in the folder `my_data/resume/`.
     - Edit `src/config.py` for `JOB_KEYWORDS`, `JOB_LOCATION`, `RELEVANCY_PERCENTAGE` (optional),
       `EXCLUDE_COMPANIES` (optional) and other if required.
     - Edit `my_data/qna_list.txt` with extra user facts.
     - Edit `my_data/instructions_to_ai.txt` with custom instructions for the AI (optional).
 
-8. Run:
+7. Run:
     - (Either) To search and apply:
         - Add in the `JOB_KEYWORDS` and `JOB_LOCATION` in `src/config.py`.
     - (Or) For selected job URLs:
         - Add the job URLs to `my_data/apply_with_urls.txt`.
     - (Then) Run using command:
-        ```bash
-        python3 src/main.py
-        ```
+        - Mac / Linux:
+            ```bash 
+            python3 src/main.py
+            ```
+        - Windows:
+            ```bash 
+            py src/main.py
+            ```
 ---
 
 ## Project structure (important files)

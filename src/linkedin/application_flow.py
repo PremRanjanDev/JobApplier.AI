@@ -297,4 +297,4 @@ def dismiss_job_apply(page, application_form, step_controls=None):
         except Exception as e:
             print(f"Confirmation modal did not appear or could not discard: {e}")
     else:
-        print("Could not find cancel button in step controls.")
+        print("No notification popup or cancel button found.")

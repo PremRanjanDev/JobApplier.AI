@@ -15,6 +15,7 @@ EXCLUDE_COMPANIES = []
 # Browser settings
 HIDE_BROWSER = False  # Run headless
 OPEN_MAXIMIZED = True
+USE_DEFAULT_CHROME = False  # To use the default Chrome
 
 # OpenAI model
 OPENAI_MODEL = "gpt-5-mini"
@@ -42,6 +43,8 @@ CACHE_FILE = SYS_DATA_DIR / "qnas_cache.json"
 RUN_DATA_FILE = SYS_DATA_DIR / "run_data.json"
 TRAINED_DATA_FILE = SYS_DATA_DIR / "trained-data.txt"
 LINKEDIN_STATE_FILE = SYS_DATA_DIR / "login" / "linkedin_state.json"
+CHROME_PROFILE_DIR = SYS_DATA_DIR / "chrome_profile"
+DEFAULT_CHROME_USER_DATA_DIR = Path.home() / "Library" / "Application Support" / "Google" / "Chrome"
 
 # API Keys (prefer environment variables)
 OPENAI_KEY_FILE = KEYS_DIR / "openai-key.txt"

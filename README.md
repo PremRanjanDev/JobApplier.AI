@@ -117,7 +117,7 @@ Before running this project, make sure you have:
 ## Configuration & keys
 
 - Primary config in `src/config.py`. Important variables:
-    - `OPENAI_MODEL`, `OPENAI_API_KEY` resolution, `LINKEDIN_STATE_FILE`, `HIDE_BROWSER`.
+    - `OPENAI_MODEL`, `OPENAI_API_KEY` resolution, `CHROME_PROFILE_DIR`, `HIDE_BROWSER`.
 - Key lookup order for OpenAI:
     1. Environment variable `OPENAI_API_KEY`
     2. `keys/openai-key.txt` (fallback)
@@ -140,7 +140,7 @@ Before running this project, make sure you have:
 ## Development & debugging
 
 - VS Code launch config: `.vscode/launch.json` (runs `src/main.py` with PYTHONPATH).
-- To force a fresh LinkedIn login, delete the file at path `LINKEDIN_STATE_FILE` (configured in `src/config.py`).
+- To force a fresh LinkedIn login, delete the Chrome profile folder at `CHROME_PROFILE_DIR` (configured in `src/config.py`).
 - Reset caches by deleting `sys_data/qnas_cache.json` and/or `sys_data/run_data.json`.
 - If selectors break after a LinkedIn UI update, edit selectors in:
     - `src/linkedin/dom_parser.py`

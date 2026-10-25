@@ -47,7 +47,10 @@ def apply_jobs_easy_apply(page, keywords, location):
     page.wait_for_timeout(timeout_5s)
 
     current_page = 1
-    next_page_selector = 'button[aria-label="View next page"]'
+    next_page_selector = (
+        'button[data-testid="pagination-controls-next-button-visible"]:visible, '
+        'button[aria-label="View next page"]:visible'
+    )
     jobs_applied = 0
     job_application_id = f"{'_'.join(keywords.split())}_{location}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
     update_run_data_job_applications(job_application_id, keywords, location, current_page)
@@ -96,12 +99,41 @@ def apply_jobs_easy_apply(page, keywords, location):
             finally:
                 dismiss_job_apply(page, None)
         print(f"Page ({current_page}) finished.")
-        next_page_button = page.query_selector(next_page_selector)
-        if next_page_button:
+        next_page_button = page.locator(next_page_selector).first
+        if next_page_button.count() and next_page_button.is_enabled():
             print("Moving to next page...")
+            active_page_button = page.locator(
+                'button[aria-current="true"][aria-label^="Page "]'
+            ).first
+            previous_page_label = (
+                active_page_button.get_attribute("aria-label")
+                if active_page_button.count()
+                else None
+            )
             next_page_button.click()
-            page.wait_for_timeout(timeout_2s)
-            current_page = page.query_selector('button[aria-current="page"][class*="button--active"] span').inner_text()
+            if previous_page_label:
+                page.wait_for_function(
+                    """previousLabel => {
+                        const activePage = document.querySelector(
+                            'button[aria-current="true"][aria-label^="Page "]'
+                        );
+                        return activePage
+                            && activePage.getAttribute("aria-label") !== previousLabel;
+                    }""",
+                    arg=previous_page_label,
+                    timeout=timeout_5s,
+                )
+                active_page_label = page.locator(
+                    'button[aria-current="true"][aria-label^="Page "]'
+                ).first.get_attribute("aria-label")
+                current_page = (
+                    int(active_page_label.rsplit(" ", 1)[-1])
+                    if active_page_label
+                    else current_page + 1
+                )
+            else:
+                page.wait_for_timeout(timeout_2s)
+                current_page += 1
         else:
             print("No more pages for job search list found. Ending process.")
             break

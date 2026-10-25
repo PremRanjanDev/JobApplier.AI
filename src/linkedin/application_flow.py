@@ -1,5 +1,7 @@
 import json
 
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
 from ai.openai_provider import parse_hiring_team, start_current_job_query_chat, parse_message_form, parse_profile
 from config import EXCLUDE_COMPANIES, RELEVANCY_PERCENTAGE, CONNECT_RECRUITER, MESSAGE_RECRUITER
 from utils.qna_manager import get_recruiter_message, get_recruiter_connect_note
@@ -28,22 +30,39 @@ def find_easy_apply_button(job_details_section):
     return True, easy_apply_button
 
 
+def find_application_form(page, wait=False):
+    """Finds the current Easy Apply dialog, optionally waiting for it to appear."""
+    selector = (
+        '[data-testid="dialog-content"]:has([data-sdui-screen*="easyapply.EasyApply"]), '
+        '[class*="easy-apply-modal"], [class^="artdeco-modal"]'
+    )
+    if wait:
+        form_element = page.wait_for_selector(selector, timeout=timeout_5s)
+    else:
+        form_element = page.query_selector(selector)
+
+    if form_element and form_element.get_attribute("data-testid") == "dialog-content":
+        application_form = form_element.query_selector("xpath=..")
+        if not application_form:
+            raise RuntimeError("Could not locate the Easy Apply dialog around its content.")
+        return application_form
+    return form_element
+
+
 def handle_application_form(page):
     """Handles the multi-step application form. Returns (status, message)."""
     previous_state = None
+    form_seen = False
 
     while True:
         try:
-            application_form = page.wait_for_selector(
-                '[class*="easy-apply-modal"], [class^="artdeco-modal"]',
-                timeout=timeout_5s,
-            )
-        except Exception:
-            return True, "Application finished"
-
-        if not application_form:
+            application_form = find_application_form(page, wait=True)
+        except PlaywrightTimeoutError:
+            if form_seen:
+                return True, "Application finished"
             return False, "Application form not found"
 
+        form_seen = True
         moved, frm_state_or_msg = process_form_step(page, application_form, previous_state)
         if frm_state_or_msg == 'applied':
             return True, frm_state_or_msg
@@ -97,10 +116,21 @@ def process_form_step(page, application_form, previous_state):
 def apply_job(page, ignore_relevancy=False):
     """Applies to a job using the Easy Apply button, handling multi-step forms."""
     print("------------------------- Applying job -------------------------")
-    job_details_section = page.wait_for_selector(
-        'main :is(div[class*="job-details"], div[class*="jobs-details"], div[class*="job-view-layout"])',
+    job_details_element = page.wait_for_selector(
+        'main [componentkey^="JobDetails_AboutTheJob_"], '
+        'main :is(div[class*="job-details"], div[class*="jobs-details"], '
+        'div[class*="job-view-layout"])',
         timeout=timeout_5s,
     )
+    component_key = job_details_element.get_attribute("componentkey") or ""
+    job_details_section = (
+        job_details_element.query_selector("xpath=../..")
+        if component_key.startswith("JobDetails_AboutTheJob_")
+        else job_details_element
+    )
+    if not job_details_section:
+        raise RuntimeError("Could not locate the job details panel around the About the job section.")
+
     job_details = extract_job_details(job_details_section)
     print(f"Job details: {json.dumps(job_details, indent=2)}")
     company = job_details.get('company', "").lower()
@@ -272,28 +302,31 @@ def message_recruiter(page, main_section, recruiter):
 
 def dismiss_job_apply(page, application_form, step_controls=None):
     """Dismisses the application modal, attempting to discard changes if needed."""
-    if not step_controls and application_form:
+    if not application_form:
+        application_form = find_application_form(page)
+    if not application_form:
+        print("No Easy Apply form found to dismiss.")
+        return
+
+    if not step_controls:
         step_controls = extract_step_controls(application_form)
 
     if step_controls and step_controls["closeButton"]:
         page.click(step_controls["closeButton"]["selector"], timeout=timeout_2s)
         try:
             confirmation_modal = page.wait_for_selector(
-                '[role="alertdialog"], [class*="layer-confirmation"]',
+                '[role="alertdialog"], [class*="layer-confirmation"], '
+                'dialog[data-testid="dialog"]:has-text("Save this application?")',
                 timeout=timeout_5s,
             )
             if confirmation_modal:
-                confirmation_controls = extract_step_controls(confirmation_modal)
-                if confirmation_controls and confirmation_controls["discardButton"]:
-                    page.click(
-                        confirmation_controls["discardButton"]["selector"],
-                        timeout=timeout_2s,
-                    )
-                elif confirmation_controls and confirmation_controls["closeButton"]:
-                    page.click(
-                        confirmation_controls["closeButton"]["selector"],
-                        timeout=timeout_2s,
-                    )
+                discard_button = confirmation_modal.query_selector(
+                    'button:has-text("Discard")'
+                )
+                if discard_button:
+                    discard_button.click(timeout=timeout_2s)
+                else:
+                    print("Discard button not found in the application confirmation dialog.")
         except Exception as e:
             print(f"Confirmation modal did not appear or could not discard: {e}")
     else:

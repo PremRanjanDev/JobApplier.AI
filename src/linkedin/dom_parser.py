@@ -8,24 +8,29 @@ def extract_job_details(element):
     """
     return element.evaluate('''(element) => {
     
-            // Get job title
             let jobTitle = '';
-            const titleElem = element.querySelector('div[class*="job-title"]');
+            const titleElem = element.querySelector('div[class*="job-title"]') ||
+                element.querySelector('a[href*="/jobs/view/"]');
             if (titleElem) {
                 jobTitle = titleElem.textContent.trim();
             }
             
-            // Get job title
             let companyName = '';
-            const companyElem = element.querySelector('div[class*="company-name"]');
+            const companyElem = element.querySelector('div[class*="company-name"]') ||
+                element.querySelector('a[href*="/company/"]');
             if (companyElem) {
-                companyName = companyElem.textContent.trim();
+                companyName = companyElem.innerText.trim().split('\\n')[0];
             }
             
-            // Get job description let jobDescription = ''; 
-            const jobDescriptionElem = element.querySelector('div[class*="jobs-description"], div[class*="job-description"]'); 
-            if (jobDescriptionElem) { 
-                jobDescription = jobDescriptionElem.textContent.replace(/\\s{2,}/g, ' \\n').trim(); 
+            let jobDescription = '';
+            const jobDescriptionElem = element.querySelector(
+                'div[class*="jobs-description"], div[class*="job-description"]'
+            ) || element.querySelector('[componentkey^="JobDetails_AboutTheJob_"]');
+            if (jobDescriptionElem) {
+                jobDescription = (jobDescriptionElem.innerText || jobDescriptionElem.textContent)
+                    .trim()
+                    .replace(/^About the job\\s*/, '')
+                    .replace(/\\n{3,}/g, '\\n\\n');
             }
     
             return { 
@@ -49,21 +54,31 @@ def extract_form_info(element):
 
         // Get header text
         let headerText = '';
-        const headerElem = modal.querySelector('.artdeco-modal__header h2');
+        const headerElem = modal.querySelector(
+            '.artdeco-modal__header h2, #dialog-header h2'
+        );
         if (headerElem) {
             headerText = headerElem.textContent.trim();
         }
 
-        // Try to read application progress
         let progress = null;
-        const progressElem = modal.querySelector('span[role="note"][aria-label*="progress"], span[aria-label*="progress"], span[role="note"]');
-        if (progressElem) {
-            // Return the visible inner text (e.g. "25%")
-            progress = (progressElem.textContent || '').trim();
+        const pageCountElem = Array.from(modal.querySelectorAll('p')).find(
+            element => /^\\d+\\s*\\/\\s*\\d+\\s+pages?$/i.test(element.innerText.trim())
+        );
+        if (pageCountElem) {
+            progress = pageCountElem.innerText.trim();
+        } else {
+            const progressElem = modal.querySelector(
+                'span[role="note"][aria-label*="progress"], '
+                + 'span[aria-label*="progress"], span[role="note"]'
+            );
+            if (progressElem) {
+                progress = (progressElem.textContent || '').trim();
+            }
         }
 
-        return { 
-            id: modal.id, 
+        return {
+            id: modal.id || modal.className,
             header: headerText, 
             progress: progress
         };
@@ -137,10 +152,18 @@ def extract_form_fields(form_element):
                 };
             }
             // Text inputs (exclude comboboxes handled above)
-            else if (element.matches('input[type="text"]:not([role="combobox"]), input[type="email"], input[type="tel"], textarea')) {
+            else if (element.matches(
+                'input[type="text"]:not([role="combobox"]), input[type="email"], '
+                + 'input[type="tel"], input[data-testid="date-picker-input"], textarea'
+            )) {
+                const label = element.labels?.[0]?.querySelector('span[aria-hidden="true"]')?.textContent.trim()
+                    || element.labels?.[0]?.innerText?.trim()
+                    || element.getAttribute('aria-label')?.trim()
+                    || element.getAttribute('placeholder')?.trim()
+                    || '';
                 fieldData = {
                     type: 'text',
-                    label: element.labels?.[0]?.querySelector('span[aria-hidden="true"]')?.textContent.trim() || element.labels?.[0]?.innerText?.trim() || '',
+                    label: label,
                     selector: '#' + element.id,
                     value: element.value || ''
                 };
@@ -163,12 +186,17 @@ def extract_form_fields(form_element):
                 };
             }
             // Radio groups (includes checkbox-style)
-            else if (element.matches('fieldset[data-test-form-builder-radio-button-form-component="true"], fieldset[data-test-checkbox-form-component="true"]')) {
+            else if (
+                element.matches('fieldset')
+                && element.querySelector('input[type="radio"], input[type="checkbox"]')
+            ) {
                 let label = '';
                 const legend = element.querySelector('legend');
                 if (legend) {
                     const spanLabel = legend.querySelector('span[aria-hidden="true"]');
                     label = spanLabel ? spanLabel.textContent.trim() : legend.textContent.trim();
+                } else if (element.previousElementSibling) {
+                    label = element.previousElementSibling.innerText.trim();
                 }
 
                 // Support both radio and checkbox inputs inside the fieldset
@@ -180,9 +208,11 @@ def extract_form_fields(form_element):
                         optionLabel = labelElem.textContent.trim();
                     } else if (input.nextElementSibling && input.nextElementSibling.tagName === 'LABEL') {
                         optionLabel = input.nextElementSibling.textContent.trim();
-                    } else {
-                        optionLabel = input.value || `Option ${idx + 1}`;
                     }
+                    optionLabel = optionLabel
+                        || input.parentElement?.parentElement?.innerText.trim()
+                        || input.value
+                        || `Option ${idx + 1}`;
 
                     // For checkbox-style options
                     let optionValue = input.value || '';
@@ -204,7 +234,9 @@ def extract_form_fields(form_element):
                     // even when the underlying control is a checkbox-style group.
                     type: 'radio',
                     label: label,
-                    selector: '#' + element.id,
+                    selector: element.id
+                        ? '#' + element.id
+                        : 'fieldset[aria-describedby="' + element.getAttribute('aria-describedby') + '"]',
                     value: selected ? selected.value : '',
                     options: options
                 };
@@ -231,14 +263,23 @@ def extract_step_controls(element):
             backButton: null,
             closeButton: null,
             saveButton: null,
-            discardButton: null,
             otherButtons: []
         };
 
         modal.querySelectorAll('button').forEach(button => {
             const label = button.innerText.trim();
-            const selector = button.id ? ('#' + button.id) : null;
-            const ariaLabel = button.getAttribute('aria-label')?.toLowerCase() || '';
+            const componentKey = button.getAttribute('componentkey');
+            const ariaLabel = button.getAttribute('aria-label') || '';
+            const selector = button.id
+                ? ('#' + button.id)
+                : componentKey
+                    ? ('button[componentkey="' + componentKey + '"]')
+                    : ariaLabel
+                        ? ('button[aria-label="' + ariaLabel + '"]')
+                        : label
+                            ? ('button:has-text("' + label + '")')
+                            : null;
+            const normalizedAriaLabel = ariaLabel.toLowerCase();
             const className = button.className?.toLowerCase() || '';
 
             if (
@@ -256,23 +297,40 @@ def extract_step_controls(element):
                 controls.backButton = { label, selector };
             } else if (label.toLowerCase().includes('save')) {
                 controls.saveButton = { label, selector };
-            } else if (label.toLowerCase().includes('discard')) {
-                controls.discardButton = { label, selector };
             } else if (
                 label.toLowerCase().includes('close') ||
                 label.toLowerCase().includes('dismiss') ||
+                label.toLowerCase().includes('discard') ||
                 label.toLowerCase().includes('cancel') ||
-                ariaLabel.includes('close') ||
-                ariaLabel.includes('dismiss') ||
-                ariaLabel.includes('cancel') ||
+                normalizedAriaLabel.includes('close') ||
+                normalizedAriaLabel.includes('dismiss') ||
+                normalizedAriaLabel.includes('discard') ||
+                normalizedAriaLabel.includes('cancel') ||
                 className.includes('dismiss') ||
                 className.includes('close')
             ) {
-                controls.closeButton = { label: ariaLabel || label, selector };
+                if (!controls.closeButton || normalizedAriaLabel) {
+                    controls.closeButton = { label: normalizedAriaLabel || label, selector };
+                }
             } else {
                 controls.otherButtons.push({ label, selector });
             }
         });
+
+        if (!controls.closeButton) {
+            let ancestor = modal.parentElement;
+            while (ancestor && ancestor !== document.body) {
+                const dismissButton = ancestor.querySelector('button[aria-label="Dismiss"]');
+                if (dismissButton) {
+                    controls.closeButton = {
+                        label: 'dismiss',
+                        selector: 'button[aria-label="Dismiss"]'
+                    };
+                    break;
+                }
+                ancestor = ancestor.parentElement;
+            }
+        }
 
         return controls;
     }''')

@@ -48,7 +48,8 @@ def update_run_data_udc(user_detail_chat_id, prop_key: str, value: dict):
     except Exception as e:
         print(f"Failed to write run data: {e}")
 
-def update_run_data_job_applications(id, keywords, location, last_page, applied=False, last_status=""):
+def update_run_data_job_applications(
+        id, keywords, location, last_page, applied=False, last_status="", record_attempt=True):
     """
     Update run_data['job_applications'] entry for given id.
     If not found, create a new entry. Updates last_applied_at timestamp if applied is True.
@@ -71,12 +72,13 @@ def update_run_data_job_applications(id, keywords, location, last_page, applied=
             ja_list.insert(0, entry)
 
         entry["last_page"] = last_page
-        entry["total_applications"] += 1
-        if applied:
-            entry["applied"] += 1
-            entry["last_applied_at"] = now_iso
-        else:
-            entry["skipped"] += 1
+        if record_attempt:
+            entry["total_applications"] += 1
+            if applied:
+                entry["applied"] += 1
+                entry["last_applied_at"] = now_iso
+            else:
+                entry["skipped"] += 1
         
         entry["last_status"] = last_status
         if "Applied" in last_status:

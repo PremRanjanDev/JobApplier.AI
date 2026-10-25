@@ -12,11 +12,29 @@ from .job_search import fetch_job_list, click_job_card
 
 def easy_apply_by_url(page, job_urls):
     """Performs the Easy Apply process given the list of job URLs."""
+    job_application_id = (
+        f"direct_urls_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    )
+    update_run_data_job_applications(
+        job_application_id,
+        "Direct job URLs",
+        "",
+        1,
+        record_attempt=False,
+    )
     for job_url in job_urls:
         page.goto(job_url)
         page.wait_for_timeout(timeout_5s)
         applied, status = apply_job(page, True)
         print(f"Job URL: {job_url}, applied: {applied}, status: {status}")
+        update_run_data_job_applications(
+            job_application_id,
+            "Direct job URLs",
+            "",
+            1,
+            applied,
+            status,
+        )
         if applied:
             remove_line_from(JOB_URLS_FILE, job_url)
 
@@ -53,7 +71,13 @@ def apply_jobs_easy_apply(page, keywords, location):
     )
     jobs_applied = 0
     job_application_id = f"{'_'.join(keywords.split())}_{location}_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    update_run_data_job_applications(job_application_id, keywords, location, current_page)
+    update_run_data_job_applications(
+        job_application_id,
+        keywords,
+        location,
+        current_page,
+        record_attempt=False,
+    )
     while True:
         print(f"Current page: ({current_page})")
         print("Fetching job listings.")

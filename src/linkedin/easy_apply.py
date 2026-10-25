@@ -22,8 +22,30 @@ def easy_apply_by_url(page, job_urls):
 
 def apply_jobs_easy_apply(page, keywords, location):
     """Performs the Easy Apply process for jobs on LinkedIn."""
-    print(f"Searching for jobs: {keywords} in {location}")
-    page.goto(f"https://www.linkedin.com/jobs/search/?keywords={keywords}&location={location}&f_AL=true")
+    job_search = f"{keywords} in {location}"
+    print(f"Searching for jobs: {job_search}")
+    page.goto("https://www.linkedin.com/jobs/")
+    search_input = page.locator(
+        'input[componentkey="jobSearchBox"], input[placeholder="Describe the job you want"]'
+    ).first
+    search_input.fill(job_search)
+    search_input.press("Enter")
+    page.wait_for_url("**/jobs/search-results/**", timeout=timeout_5s)
+    page.wait_for_timeout(timeout_5s)
+    easy_apply_filter = page.locator(
+        'div[aria-label="Filter by Easy Apply"]:visible label'
+    ).first
+    if not easy_apply_filter.count():
+        easy_apply_filter = page.locator(
+            'label:has-text("Easy Apply"):visible'
+        ).first
+    page.wait_for_timeout(timeout_2s)
+    if easy_apply_filter.count():
+        easy_apply_filter.click()
+    else:
+        print("Easy Apply filter not found. Continuing without filter.")
+    page.wait_for_timeout(timeout_5s)
+
     current_page = 1
     next_page_selector = 'button[aria-label="View next page"]'
     jobs_applied = 0

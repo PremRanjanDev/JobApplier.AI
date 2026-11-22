@@ -18,8 +18,10 @@ def connect_default_chrome(p):
         raise RuntimeError("Chrome remote debugging is not enabled. Open Chrome, go to "
                            "chrome://inspect/#remote-debugging and allow remote debugging, then retry.")
     except PermissionError:
-        raise RuntimeError(f"macOS blocked reading {port_file}. Give your terminal app Full Disk Access in "
-                           "System Settings > Privacy & Security > Full Disk Access, restart it, then retry.")
+        raise RuntimeError(f"macOS blocked reading {port_file}. Either give the app running JobApplier.AI "
+                           "(such as Terminal or VS Code) Full Disk Access in System Settings > Privacy & "
+                           "Security > Full Disk Access, then restart it, or set USE_DEFAULT_CHROME = False "
+                           "in src/config.py to use JobApplier.AI's separate Chrome profile.")
     browser = p.chromium.connect_over_cdp(f"ws://127.0.0.1:{port.strip()}{ws_path.strip()}")
     return browser.contexts[0]
 

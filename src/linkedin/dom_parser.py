@@ -17,15 +17,22 @@ def extract_job_details(element):
             
             let companyName = '';
             const companyElem = element.querySelector('div[class*="company-name"]') ||
-                element.querySelector('a[href*="/company/"]');
+                Array.from(element.querySelectorAll('a[href*="/company/"]'))
+                    .find(link => (link.innerText || link.textContent).trim());
             if (companyElem) {
                 companyName = companyElem.innerText.trim().split('\\n')[0];
             }
             
             let jobDescription = '';
+            const aboutTheJobHeading = Array.from(element.querySelectorAll('h2'))
+                .find(heading => heading.textContent.trim() === 'About the job');
+            const expandableDescription = aboutTheJobHeading
+                ?.parentElement?.parentElement
+                ?.querySelector('[data-testid="expandable-text-box"]');
             const jobDescriptionElem = element.querySelector(
                 'div[class*="jobs-description"], div[class*="job-description"]'
-            ) || element.querySelector('[componentkey^="JobDetails_AboutTheJob_"]');
+            ) || element.querySelector('[componentkey^="JobDetails_AboutTheJob_"]')
+                || expandableDescription;
             if (jobDescriptionElem) {
                 jobDescription = (jobDescriptionElem.innerText || jobDescriptionElem.textContent)
                     .trim()
@@ -96,6 +103,8 @@ def extract_form_fields(form_element):
     """
     return form_element.evaluate('''(modal) => {
 
+        const cleanFieldLabel = (label) => label.replace(/\\s*\\*\\s*$/, '').trim();
+
         const getFieldError = (element) => {
             const errorId = element.getAttribute('aria-describedby');
             if (errorId) {
@@ -144,7 +153,7 @@ def extract_form_fields(form_element):
                 }
                 fieldData = {
                     type: 'combobox',
-                    label: element.labels?.[0]?.querySelector('span[aria-hidden="true"]')?.textContent.trim() || element.labels?.[0]?.innerText.trim() || '',
+                    label: cleanFieldLabel(element.labels?.[0]?.querySelector('span[aria-hidden="true"]')?.textContent || element.labels?.[0]?.innerText || ''),
                     selector: '#' + element.id,
                     value: element.value || '',
                     listbox: listId,
@@ -156,11 +165,13 @@ def extract_form_fields(form_element):
                 'input[type="text"]:not([role="combobox"]), input[type="email"], '
                 + 'input[type="tel"], input[data-testid="date-picker-input"], textarea'
             )) {
-                const label = element.labels?.[0]?.querySelector('span[aria-hidden="true"]')?.textContent.trim()
-                    || element.labels?.[0]?.innerText?.trim()
-                    || element.getAttribute('aria-label')?.trim()
-                    || element.getAttribute('placeholder')?.trim()
-                    || '';
+                const label = cleanFieldLabel(
+                    element.labels?.[0]?.querySelector('span[aria-hidden="true"]')?.textContent
+                    || element.labels?.[0]?.innerText
+                    || element.getAttribute('aria-label')
+                    || element.getAttribute('placeholder')
+                    || ''
+                );
                 fieldData = {
                     type: 'text',
                     label: label,
@@ -179,7 +190,7 @@ def extract_form_fields(form_element):
                 const topOptions = options.length > 10 ? options.slice(0, 10) : options;
                 fieldData = {
                     type: 'select',
-                    label: element.labels?.[0]?.querySelector('span[aria-hidden="true"]')?.textContent.trim() || element.labels?.[0]?.innerText.trim() || '',
+                    label: cleanFieldLabel(element.labels?.[0]?.querySelector('span[aria-hidden="true"]')?.textContent || element.labels?.[0]?.innerText || ''),
                     selector: '#' + element.id,
                     value: element.value,
                     options: topOptions
@@ -198,6 +209,7 @@ def extract_form_fields(form_element):
                 } else if (element.previousElementSibling) {
                     label = element.previousElementSibling.innerText.trim();
                 }
+                label = cleanFieldLabel(label);
 
                 // Support both radio and checkbox inputs inside the fieldset
                 const choiceInputs = element.querySelectorAll('input[type="radio"], input[type="checkbox"]');

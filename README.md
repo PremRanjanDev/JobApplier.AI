@@ -159,6 +159,10 @@ Notes:
 - Multiple files in `my_data/resume/` — keep only one resume file.
 - Missing or invalid OpenAI key — AI calls will fail.
 - Playwright browser not installed — run `playwright install`.
+- On macOS, using the default Chrome (`USE_DEFAULT_CHROME = True`) may require Full Disk Access for the app
+  running JobApplier.AI (such as Terminal or VS Code). Grant it under **System Settings > Privacy & Security >
+  Full Disk Access**, then restart that app. Alternatively, set `USE_DEFAULT_CHROME = False` in `src/config.py`
+  to use JobApplier.AI's separate Chrome profile; you may need to log in to LinkedIn in that profile.
 - LinkedIn UI changes require selector updates.
 
 ---

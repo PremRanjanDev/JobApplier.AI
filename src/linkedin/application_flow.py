@@ -119,15 +119,19 @@ def apply_job(page, ignore_relevancy=False):
     job_details_element = page.wait_for_selector(
         'main [componentkey^="JobDetails_AboutTheJob_"], '
         'main :is(div[class*="job-details"], div[class*="jobs-details"], '
-        'div[class*="job-view-layout"])',
+        'div[class*="job-view-layout"]), '
+        'h2:has-text("About the job")',
         timeout=timeout_5s,
     )
     component_key = job_details_element.get_attribute("componentkey") or ""
-    job_details_section = (
-        job_details_element.query_selector("xpath=../..")
-        if component_key.startswith("JobDetails_AboutTheJob_")
-        else job_details_element
-    )
+    if component_key.startswith("JobDetails_AboutTheJob_"):
+        job_details_section = job_details_element.query_selector("xpath=../..")
+    elif job_details_element.evaluate("(element) => element.matches('h2')"):
+        job_details_section = job_details_element.query_selector(
+            "xpath=ancestor::div[@data-testid='lazy-column'][1]"
+        )
+    else:
+        job_details_section = job_details_element
     if not job_details_section:
         raise RuntimeError("Could not locate the job details panel around the About the job section.")
 
